@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Darpan Task Organizer</title>
+<link rel="icon" href="https://www.darpanadhikari.com.np/addition/images/logo.ico" type="image/x-icon">
+<style>
+  :root {
+    --bg-gradient: linear-gradient(135deg, #0079bf, #005a8f);
+    --list-bg: #f1f2f4;
+    --card-bg: #ffffff;
+    --text-main: #172b4d;
+    --text-light: #44546f;
+    --btn-primary: #0c66e4;
+    --btn-hover: #0055cc;
+    --danger: #c9372c;
+    --border-radius-lg: 12px;
+    --border-radius-md: 8px;
+    --border-radius-sm: 4px;
+    --shadow-sm: 0 1px 2px rgba(9, 30, 66, 0.15);
+    --shadow-md: 0 4px 8px rgba(9, 30, 66, 0.1);
+    --shadow-lg: 0 8px 16px rgba(9, 30, 66, 0.15);
+    --transition: all 0.2s ease-in-out;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    margin: 0; background: var(--bg-gradient); color: var(--text-main);
+    display: flex; flex-direction: column; height: 100vh; overflow: hidden;
+  }
+
+  header { 
+    background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px);
+    color: white; padding: 12px 24px; display: flex; align-items: center; gap: 15px; 
+    box-shadow: var(--shadow-sm); border-bottom: 1px solid rgba(255,255,255,0.2);
+  }
+  
+  #workspaces { display: flex; flex-direction: column; flex-grow: 1; overflow-y: auto; padding: 20px 24px; gap: 20px;}
+  
+  .workspace-header {
+    display: flex; align-items: center; gap: 10px; color: white; cursor: pointer;
+    font-size: 1.2rem; font-weight: 600; padding: 5px 0; user-select: none;
+    transition: opacity 0.2s;
+  }
+  .workspace-header:hover { opacity: 0.8; }
+  .toggle-icon { font-size: 0.8rem; transition: transform 0.3s; }
+  .workspace.collapsed .toggle-icon { transform: rotate(-90deg); }
+  .workspace.collapsed .board-list { display: none; }
+
+  .board-list { display: flex; gap: 16px; align-items: flex-start; margin-top: 10px; overflow-x: auto; padding-bottom: 10px;}
+  .board-list::-webkit-scrollbar { height: 8px; }
+  .board-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 4px; }
+
+  .board {
+    background: var(--list-bg); border-radius: var(--border-radius-lg); width: 280px; min-width: 280px;
+    display: flex; flex-direction: column; max-height: 80vh; box-shadow: var(--shadow-sm);
+  }
+
+  .board-header { padding: 14px; display: flex; justify-content: space-between; align-items: center; }
+  .board-header h3 { margin: 0; font-size: 14px; font-weight: 600; color: var(--text-main); }
+  
+  .tasks { padding: 0 8px 8px; overflow-y: auto; flex-grow: 1; min-height: 100px; padding-bottom: 50px; }
+  
+  .task {
+    background: var(--card-bg); margin-bottom: 8px; border-radius: var(--border-radius-md);
+    box-shadow: var(--shadow-sm); cursor: grab; position: relative;
+    transition: var(--transition); overflow: hidden; display: flex; flex-direction: column;
+  }
+  .task:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+  .task:active { cursor: grabbing; }
+  
+  /* Dragging State Styles */
+  .task.dragging {
+    opacity: 0.5;
+    transform: scale(0.95);
+    box-shadow: none;
+  }
+
+  .task-cover {
+    width: 100%; height: 120px; object-fit: cover; 
+    border-bottom: 1px solid rgba(0,0,0,0.05); pointer-events: none;
+  }
+
+  .task-content { padding: 10px; pointer-events: none; }
+  .task-title { font-weight: 500; font-size: 14px; margin-bottom: 4px; display: block; color: var(--text-main); }
+  .task-desc-preview { font-size: 12px; color: var(--text-light); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+  /* Ensure buttons are clickable even though task content ignores pointer events */
+  .card-btns { display: flex; gap: 5px; margin-top: 8px; justify-content: flex-end; opacity: 0; transition: var(--transition); pointer-events: auto; }
+  .task:hover .card-btns { opacity: 1; }
+  .small-btn { font-size: 11px; padding: 4px 8px; border-radius: var(--border-radius-sm); border: none; cursor: pointer; transition: var(--transition); background: #f1f2f4; color: var(--text-light); }
+  .small-btn:hover { background: #dcdfe4; color: var(--text-main); }
+  .del-btn:hover { background: #ffebeb; color: var(--danger); }
+
+  .modal-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(9, 30, 66, 0.54); backdrop-filter: blur(3px);
+    display: none; justify-content: center; align-items: center; z-index: 1000;
+    opacity: 0; transition: opacity 0.2s;
+  }
+  .modal-overlay.active { display: flex; opacity: 1; }
+  .modal { background: #f1f2f4; width: 650px; border-radius: var(--border-radius-lg); padding: 24px; box-shadow: var(--shadow-lg); }
+  
+  .modal-header-input { width: 100%; font-size: 20px; font-weight: 600; border: 2px solid transparent; background: transparent; padding: 8px; margin-bottom: 15px; border-radius: var(--border-radius-md); transition: var(--transition); }
+  .modal-header-input:focus { background: white; border-color: var(--btn-primary); outline: none; }
+
+  .editor-toolbar { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; background: white; padding: 8px; border-radius: var(--border-radius-md) var(--border-radius-md) 0 0; border: 1px solid #dcdfe4; border-bottom: none;}
+  .editor-btn { padding: 6px 12px; background: transparent; border: none; border-radius: var(--border-radius-sm); cursor: pointer; font-size: 13px; font-weight: 500; color: var(--text-light); transition: var(--transition);}
+  .editor-btn:hover { background: #f1f2f4; color: var(--text-main);}
+  
+  .editable-desc {
+    background: white; border: 1px solid #dcdfe4; min-height: 200px; max-height: 400px;
+    padding: 16px; border-radius: 0 0 var(--border-radius-md) var(--border-radius-md); outline: none; overflow-y: auto; line-height: 1.5;
+  }
+  .editable-desc img { max-width: 100%; border-radius: var(--border-radius-md); margin: 8px 0; box-shadow: var(--shadow-sm); }
+
+  .input-group { padding: 10px; border-top: 1px solid #dcdfe4; display: flex; flex-direction: column; gap: 8px; }
+  input[type="text"] { width: 100%; padding: 10px; border-radius: var(--border-radius-sm); border: 2px solid #dcdfe4; box-sizing: border-box; transition: var(--transition); font-family: inherit;}
+  input[type="text"]:focus { border-color: var(--btn-primary); outline: none; }
+  
+  .btn-primary { background: var(--btn-primary); color: white; padding: 10px 16px; border: none; border-radius: var(--border-radius-sm); cursor: pointer; font-weight: 500; transition: var(--transition); }
+  .btn-primary:hover { background: var(--btn-hover); }
+</style>
+</head>
+<body>
+
+<header>
+    <span style="font-size: 24px;"><img src="https://www.darpanadhikari.com.np/addition/images/logo.ico" alt=""></span> <strong style="font-size: 18px;">Darpan Task Organizer</strong>
+    <input type="text" id="newWorkspace" placeholder="New workspace name..." style="width: 220px; margin-left: 20px; padding: 8px;">
+    <button onclick="addUser()" class="btn-primary" style="padding: 8px 16px;">Create</button>
+    <button onclick="notifyDownload()">Trigger Notification</button>
+</header>
+
+<div id="workspaces"></div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <input type="text" id="modalTitle" class="modal-header-input">
+    
+    <label style="font-size: 12px; font-weight: 600; color: var(--text-light); margin-left: 4px;">Description (Paste images here to create a cover!)</label>
+    <div class="editor-toolbar">
+      <button class="editor-btn" onclick="exec('bold')"><b>B</b></button>
+      <button class="editor-btn" onclick="exec('italic')"><i>I</i></button>
+      <button class="editor-btn" onclick="exec('insertUnorderedList')">• List</button>
+    </div>
+    <div id="modalDesc" class="editable-desc" contenteditable="true"></div>
+
+    <div style="margin-top: 20px; display: flex; justify-content: flex-end; gap: 12px;">
+      <button onclick="closeModal()" style="background:transparent; color: var(--text-light); padding: 10px 20px; border-radius:var(--border-radius-sm); border:none; cursor:pointer; font-weight: 500;">Cancel</button>
+      <button class="btn-primary" onclick="saveChanges()">Save Details</button>
+    </div>
+  </div>
+</div>
+<footer style="position: fixed; bottom: 0; width: 100%; background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); text-align: center; padding: 12px 0; box-shadow: var(--shadow-sm); border-top: 1px solid rgba(255,255,255,0.2);">
+    <span
+        ><i>&copy;</i><span id="date"></span
+        ><a href="https://darpanadhikari.com.np" target="_blank">
+        DarpanAdhikari</a
+        >
+        || All right reserved</span
+    >
+</footer>
+<script>
+let db;
+let currentTaskRef = null;
+let draggedItem = null;
+
+const request = indexedDB.open("TrelloSmoothDB", 1);
+request.onupgradeneeded = e => {
+  db = e.target.result;
+  db.createObjectStore("users", { keyPath: "name" });
+};
+request.onsuccess = e => { db = e.target.result; render(); };
+
+function exec(cmd, val = null) { document.execCommand(cmd, false, val); }
+
+function updateUser(uName, cb) {
+  const tx = db.transaction("users", "readwrite");
+  const store = tx.objectStore("users");
+  store.get(uName).onsuccess = e => {
+    const u = e.target.result;
+    cb(u);
+    store.put(u);
+    tx.oncomplete = render;
+  };
+}
+
+// --- Drag and Drop Logic ---
+function handleDragStart(e, uName, bTitle, tId) {
+  draggedItem = { uName, bTitle, tId };
+  e.dataTransfer.effectAllowed = 'move';
+  setTimeout(() => e.target.classList.add('dragging'), 0);
+}
+
+function handleDragEnd(e) {
+  e.target.classList.remove('dragging');
+  setTimeout(() => draggedItem = null, 10);
+}
+
+function handleDragOver(e) {
+  e.preventDefault(); // This is MANDATORY to allow a drop
+  e.dataTransfer.dropEffect = "move";
+}
+
+function handleDrop(e, targetUName, targetBTitle) {
+  e.preventDefault();
+  if (!draggedItem) return;
+
+  // COPY the dragged item before dragend clears it
+  const item = { ...draggedItem };
+
+  // Restriction check
+  if (item.uName !== targetUName) {
+    alert("Cross-workspace dragging is disabled.");
+    return;
+  }
+
+  const container = e.currentTarget;
+  const afterElement = getDragAfterElement(container, e.clientY);
+  const targetId = afterElement ? Number(afterElement.dataset.id) : null;
+
+  updateUser(item.uName, u => {
+
+    const sourceBoard = u.boards.find(b => b.title === item.bTitle);
+    const targetBoard = u.boards.find(b => b.title === targetBTitle);
+
+    if (!sourceBoard || !targetBoard) return;
+
+    const taskIndex = sourceBoard.tasks.findIndex(t => t.id === item.tId);
+    if (taskIndex === -1) return;
+
+    const [movedTask] = sourceBoard.tasks.splice(taskIndex, 1);
+
+    if (targetId === null) {
+      targetBoard.tasks.push(movedTask);
+    } else {
+      const insertIndex = targetBoard.tasks.findIndex(t => t.id === targetId);
+      targetBoard.tasks.splice(insertIndex, 0, movedTask);
+    }
+  });
+}
+function getDragAfterElement(container, y) {
+  const draggableElements = [...container.querySelectorAll('.task:not(.dragging)')];
+
+  return draggableElements.reduce((closest, child) => {
+    const box = child.getBoundingClientRect();
+    const offset = y - box.top - box.height / 2;
+
+    if (offset < 0 && offset > closest.offset) {
+      return { offset: offset, element: child };
+    } else {
+      return closest;
+    }
+  }, { offset: Number.NEGATIVE_INFINITY }).element;
+}
+// Data Actions
+function addUser() {
+  const name = document.getElementById('newWorkspace').value.trim();
+  if (!name) return;
+  const tx = db.transaction("users", "readwrite");
+  tx.objectStore("users").add({ name, collapsed: false, boards: [] });
+  tx.oncomplete = () => { document.getElementById('newWorkspace').value = ''; render(); };
+}
+
+function addBoard(uName) {
+  const val = document.getElementById(`nb-${uName}`).value.trim();
+  if (!val) return;
+  updateUser(uName, u => u.boards.push({ title: val, tasks: [] }));
+}
+
+function addTask(uName, bTitle) {
+  const val = document.getElementById(`nt-${uName}-${bTitle}`).value.trim();
+  if (!val) return;
+  updateUser(uName, u => {
+    u.boards.find(x => x.title === bTitle).tasks.push({ 
+      id: Date.now(), title: val, desc: "", html: "", cover: null 
+    });
+  });
+}
+
+function deleteTask(uName, bTitle, tId) {
+  if(!confirm("Delete this card entirely?")) return;
+  updateUser(uName, u => {
+    const b = u.boards.find(x => x.title === bTitle);
+    b.tasks = b.tasks.filter(t => t.id !== tId);
+  });
+}
+
+function toggleWorkspace(uName) {
+  updateUser(uName, u => u.collapsed = !u.collapsed);
+}
+
+// Modal & Cover Image Logic
+function openModal(e, uName, bTitle, tId) {
+  // Prevent opening modal if clicking edit/delete buttons
+  if(e.target.closest('.small-btn')) return;
+
+  const tx = db.transaction("users", "readonly");
+  tx.objectStore("users").get(uName).onsuccess = event => {
+    const task = event.target.result.boards.find(b => b.title === bTitle).tasks.find(t => t.id === tId);
+    currentTaskRef = { uName, bTitle, tId };
+    document.getElementById('modalTitle').value = task.title;
+    document.getElementById('modalDesc').innerHTML = task.html || task.desc;
+    
+    document.getElementById('modalOverlay').classList.add('active');
+  };
+}
+
+function closeModal() { document.getElementById('modalOverlay').classList.remove('active'); }
+
+function extractCoverImage(htmlString) {
+  const tempDiv = document.createElement('div');
+  tempDiv.innerHTML = htmlString;
+  const img = tempDiv.querySelector('img');
+  return img ? img.src : null;
+}
+
+function saveChanges() {
+  // Check if currentTaskRef exists to avoid the 'properties of null' error
+  if (!currentTaskRef) {
+    console.error("No task selected to save.");
+    closeModal();
+    return;
+  }
+
+  const newTitle = document.getElementById('modalTitle').value;
+  const newHtml = document.getElementById('modalDesc').innerHTML;
+  const plainText = document.getElementById('modalDesc').innerText;
+  const coverImgSrc = extractCoverImage(newHtml);
+
+  updateUser(currentTaskRef.uName, u => {
+    const board = u.boards.find(x => x.title === currentTaskRef.bTitle);
+    if (!board) return; // Safety check
+    
+    const t = board.tasks.find(x => x.id === currentTaskRef.tId);
+    if (!t) return; // Safety check
+    
+    t.title = newTitle;
+    t.html = newHtml;
+    t.desc = plainText.substring(0, 120); 
+    t.cover = coverImgSrc; 
+  });
+  
+  closeModal();
+}
+
+// Render UI
+function render() {
+  const root = document.getElementById('workspaces');
+  root.innerHTML = '';
+  db.transaction("users").objectStore("users").openCursor().onsuccess = e => {
+    const cursor = e.target.result;
+    if (cursor) {
+      const u = cursor.value;
+      const div = document.createElement('div');
+      div.className = `workspace ${u.collapsed ? 'collapsed' : ''}`;
+      
+      div.innerHTML = `
+        <div class="workspace-header" onclick="toggleWorkspace('${u.name}')">
+          <span class="toggle-icon">▼</span> ${u.name}
+        </div>
+        <div class="board-list">
+          ${u.boards.map(b => `
+            <div class="board">
+              <div class="board-header"><h3>${b.title}</h3></div>
+              
+              <div class="tasks" ondragover="handleDragOver(event)" ondrop="handleDrop(event, '${u.name}', '${b.title}')">
+                
+                ${b.tasks.map(t => `
+                  <div class="task" draggable="true" data-id="${t.id}"
+                       ondragstart="handleDragStart(event, '${u.name}', '${b.title}', ${t.id})" 
+                       ondragend="handleDragEnd(event)"
+                       onclick="openModal(event, '${u.name}', '${b.title}', ${t.id})">
+                    ${t.cover ? `<img src="${t.cover}" class="task-cover">` : ''}
+                    <div class="task-content">
+                      <span class="task-title">${t.title}</span>
+                      ${t.desc ? `<div class="task-desc-preview">${t.desc}</div>` : ''}
+                      <div class="card-btns">
+                        <button class="small-btn edit-btn" onclick="event.stopPropagation();">Edit</button>
+                        <button class="small-btn del-btn" onclick="deleteTask('${u.name}', '${b.title}', ${t.id})">Delete</button>
+                      </div>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+
+              <div class="input-group">
+                <input type="text" id="nt-${u.name}-${b.title}" placeholder="Add a card..." onkeypress="if(event.key === 'Enter') addTask('${u.name}','${b.title}')">
+                <button class="btn-primary" onclick="addTask('${u.name}', '${b.title}')">Add Card</button>
+              </div>
+            </div>
+          `).join('')}
+          <div class="board" style="background: rgba(255,255,255,0.8); border: 2px dashed rgba(0,0,0,0.1); box-shadow: none;">
+            <div class="input-group" style="border-top: none;">
+              <input type="text" id="nb-${u.name}" placeholder="New list name..." onkeypress="if(event.key === 'Enter') addBoard('${u.name}')">
+              <button class="btn-primary" onclick="addBoard('${u.name}')">Add List</button>
+            </div>
+          </div>
+        </div>`;
+      root.appendChild(div);
+      cursor.continue();
+    }
+  };
+}
+if ("serviceWorker" in navigator) {
+
+  navigator.serviceWorker.register("sw.js").then(() => {
+    console.log("SW registered");
+  });
+
+}
+
+function notifyDownload(){
+
+  navigator.serviceWorker.controller.postMessage({
+    type: "text",
+    title: "This has done something",
+    text: "Click to open download page",
+    url: "/download"
+    });
+
+}
+</script>
+</body>
+</html>
