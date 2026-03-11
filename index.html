@@ -410,9 +410,18 @@ if ("serviceWorker" in navigator) {
   });
 
 }
+async function requestNotificationPermission() {
+  if (Notification.permission === "granted") return true;
 
+  const permission = await Notification.requestPermission();
+  return permission === "granted";
+}
 function notifyDownload(){
-
+  const allowed = await requestNotificationPermission();
+  if (!allowed) {
+    console.log("Notification permission denied");
+    return;
+  }
   navigator.serviceWorker.controller.postMessage({
     type: "text",
     title: "This has done something",
@@ -423,4 +432,5 @@ function notifyDownload(){
 }
 </script>
 </body>
+
 </html>
