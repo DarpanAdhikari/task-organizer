@@ -410,27 +410,39 @@ if ("serviceWorker" in navigator) {
   });
 
 }
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js").then(() => {
+    console.log("SW registered");
+  });
+}
+
 async function requestNotificationPermission() {
   if (Notification.permission === "granted") return true;
 
   const permission = await Notification.requestPermission();
   return permission === "granted";
 }
-function notifyDownload(){
+
+async function notifyDownload() {
+
   const allowed = await requestNotificationPermission();
   if (!allowed) {
     console.log("Notification permission denied");
     return;
   }
-  navigator.serviceWorker.controller.postMessage({
-    type: "text",
-    title: "This has done something",
-    text: "Click to open download page",
-    url: "/download"
+
+  if (navigator.serviceWorker.controller) {
+    navigator.serviceWorker.controller.postMessage({
+      type: "text",
+      title: "This has done something",
+      text: "Click to open download page",
+      url: "/download"
     });
+  }
 
 }
 </script>
 </body>
 
 </html>
+
