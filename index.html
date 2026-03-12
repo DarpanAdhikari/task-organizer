@@ -267,6 +267,28 @@ function addBoard(uName) {
   const val = document.getElementById(`nb-${uName}`).value.trim();
   if (!val) return;
   updateUser(uName, u => u.boards.push({ title: val, tasks: [] }));
+  let notifyJson = {
+      type: "text",
+      title: `New Board ${uName} is added`,
+      text: "Click to view",
+      url: "/empty"
+    };
+  notifyDownload(notifyJson);
+}
+
+function deleteBoard(uName, bTitle){
+  if(!confirm("Delete this list?")) return;
+
+  updateUser(uName, u=>{
+    u.boards = u.boards.filter(b => b.title !== bTitle);
+  });
+  let notifyJson = {
+      type: "text",
+      title: `Board ${uName} is deleted successfully`,
+      text: "Click to view",
+      url: "/empty"
+    };
+  notifyDownload(notifyJson);
 }
 
 function addTask(uName, bTitle) {
@@ -277,6 +299,13 @@ function addTask(uName, bTitle) {
       id: Date.now(), title: val, desc: "", html: "", cover: null 
     });
   });
+  let notifyJson = {
+      type: "text",
+      title: `New Task ${uName} is added to ${bTitle}`,
+      text: "Click to view",
+      url: "/empty"
+    };
+  notifyDownload(notifyJson);
 }
 
 function deleteTask(uName, bTitle, tId) {
@@ -285,12 +314,33 @@ function deleteTask(uName, bTitle, tId) {
     const b = u.boards.find(x => x.title === bTitle);
     b.tasks = b.tasks.filter(t => t.id !== tId);
   });
+  let notifyJson = {
+      type: "text",
+      title: `Task ${uName} is deleted successfully`,
+      text: "Click to view",
+      url: "/empty"
+    };
+  notifyDownload(notifyJson);
 }
 
 function toggleWorkspace(uName) {
   updateUser(uName, u => u.collapsed = !u.collapsed);
 }
 
+function deleteWorkspace(uName){
+  if(!confirm("Delete this workspace?")) return;
+
+  const tx = db.transaction("users","readwrite");
+  tx.objectStore("users").delete(uName);
+  tx.oncomplete = render;
+  let notifyJson = {
+      type: "text",
+      title: `Workspace ${uName} is deleted successfully`,
+      text: "Click to view",
+      url: "/empty"
+    };
+  notifyDownload(notifyJson);
+}
 // Modal & Cover Image Logic
 function openModal(e, uName, bTitle, tId) {
   // Prevent opening modal if clicking edit/delete buttons
@@ -357,14 +407,20 @@ function render() {
       div.className = `workspace ${u.collapsed ? 'collapsed' : ''}`;
       
       div.innerHTML = `
-        <div class="workspace-header" onclick="toggleWorkspace('${u.name}')">
-          <span class="toggle-icon">▼</span> ${u.name}
+        <div class="workspace-header">
+          <span onclick="toggleWorkspace('${u.name}')">▼ ${u.name}</span>
+          <button class="small-btn del-btn" onclick="deleteWorkspace('${u.name}')">Delete</button>
         </div>
         <div class="board-list">
           ${u.boards.map(b => `
             <div class="board">
-              <div class="board-header"><h3>${b.title}</h3></div>
-              
+              <div class="board-header">
+                <h3>${b.title}</h3>
+                <button class="small-btn del-btn"
+                onclick="deleteBoard('${u.name}','${b.title}')">
+                Delete
+                </button>
+              </div>
               <div class="tasks" ondragover="handleDragOver(event)" ondrop="handleDrop(event, '${u.name}', '${b.title}')">
                 
                 ${b.tasks.map(t => `
@@ -423,7 +479,7 @@ async function requestNotificationPermission() {
   return permission === "granted";
 }
 
-async function notifyDownload() {
+async function notifyDownload(json) {
 
   const allowed = await requestNotificationPermission();
   if (!allowed) {
@@ -432,12 +488,7 @@ async function notifyDownload() {
   }
 
   if (navigator.serviceWorker.controller) {
-    navigator.serviceWorker.controller.postMessage({
-      type: "text",
-      title: "This has done something",
-      text: "Click to open download page",
-      url: "/download"
-    });
+    navigator.serviceWorker.controller.postMessage(json);
   }
 
 }
@@ -445,4 +496,5 @@ async function notifyDownload() {
 </body>
 
 </html>
+
 
