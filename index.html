@@ -468,29 +468,50 @@ function render() {
   };
 }
 function insertCode(){
-  document.execCommand("insertHTML", false, "<code>your code</code>");
+  document.execCommand("insertHTML", false, "<code>code</code>&nbsp;");
 }
 
 function insertPre(){
   document.execCommand(
     "insertHTML",
     false,
-    "<pre class='code-block'><code>// code here</code></pre>"
+    "<pre class='code-block'><code>code</code></pre><p><br></p>"
   );
 }
 
 function insertQuote(){
-  document.execCommand("formatBlock", false, "blockquote");
+  document.execCommand(
+    "insertHTML",
+    false,
+    "<blockquote>quote</blockquote><p><br></p>"
+  );
 }
 
 function insertLink(){
   const url = prompt("Enter URL");
-  if(url) document.execCommand("createLink", false, url);
+  if(!url) return;
+  document.execCommand("insertHTML", false, `<a href="${url}" target="_blank">${url}</a>&nbsp;`);
 }
 
-function clearFormat(){
-  document.execCommand("removeFormat");
+  function clearFormat(){
+  const sel = window.getSelection();
+  if(!sel.rangeCount) return;
+
+  const range = sel.getRangeAt(0);
+  const text = range.toString();
+
+  document.execCommand("insertText", false, text);
 }
+document.getElementById("modalDesc").addEventListener("keydown", e=>{
+  if(e.key==="Enter"){
+    const sel=window.getSelection();
+    const node=sel.anchorNode;
+    if(node && node.parentElement.closest("pre")){
+      e.preventDefault();
+      document.execCommand("insertHTML",false,"</pre><p><br></p>");
+    }
+  }
+});
 if ("serviceWorker" in navigator) {
 
   navigator.serviceWorker.register("sw.js").then(() => {
@@ -528,6 +549,7 @@ async function notifyDownload(json) {
 </body>
 
 </html>
+
 
 
 
