@@ -105,9 +105,7 @@
   .modal-header-input { width: 100%; font-size: 20px; font-weight: 600; border: 2px solid transparent; background: transparent; padding: 8px; margin-bottom: 15px; border-radius: var(--border-radius-md); transition: var(--transition); }
   .modal-header-input:focus { background: white; border-color: var(--btn-primary); outline: none; }
 
-  .editor-toolbar { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; background: white; padding: 8px; border-radius: var(--border-radius-md) var(--border-radius-md) 0 0; border: 1px solid #dcdfe4; border-bottom: none;}
-  .editor-btn { padding: 6px 12px; background: transparent; border: none; border-radius: var(--border-radius-sm); cursor: pointer; font-size: 13px; font-weight: 500; color: var(--text-light); transition: var(--transition);}
-  .editor-btn:hover { background: #f1f2f4; color: var(--text-main);}
+  .editor-toolbar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;background:#fff;padding:8px;border-radius:10px 10px 0 0;border:1px solid #e4e6eb;border-bottom:none;box-shadow:0 2px 8px rgba(0,0,0,.05)}.editor-btn{display:flex;align-items:center;justify-content:center;padding:6px 12px;font-size:13px;font-weight:600;color:#555;background:#fff;border:1px solid transparent;border-radius:6px;cursor:pointer;transition:all .18s ease}.editor-btn:hover{background:#f5f6f8;border-color:#d0d4da;color:#111;transform:translateY(-1px)}.editor-btn:active{transform:scale(.95);background:#e9ebef}.editor-toolbar .separator{width:1px;height:20px;background:#e0e3e7;margin:0 4px}
   
   .editable-desc {
     background: white; border: 1px solid #dcdfe4; min-height: 200px; max-height: 400px;
@@ -132,7 +130,7 @@ blockquote{border-left:4px solid #ccc;padding-left:10px;color:#555;margin:6px 0;
     <span style="font-size: 24px;"><img src="https://www.darpanadhikari.com.np/addition/images/logo.ico" alt=""></span> <strong style="font-size: 18px;">Darpan Task Organizer</strong>
     <input type="text" id="newWorkspace" placeholder="New workspace name..." style="width: 220px; margin-left: 20px; padding: 8px;">
     <button onclick="addUser()" class="btn-primary" style="padding: 8px 16px;">Create</button>
-    <button onclick="notifyDownload()">Trigger Notification</button>
+    <!-- <button onclick="notifyDownload()">Trigger Notification</button> -->
 </header>
 
 <div id="workspaces"></div>
@@ -146,10 +144,11 @@ blockquote{border-left:4px solid #ccc;padding-left:10px;color:#555;margin:6px 0;
       <button class="editor-btn" onclick="exec('bold')"><b>B</b></button>
       <button class="editor-btn" onclick="exec('italic')"><i>I</i></button>
       <button class="editor-btn" onclick="exec('insertUnorderedList')">• List</button>
-    
+      <div class="separator"></div>
       <button class="editor-btn" onclick="insertCode()">Code</button>
       <button class="editor-btn" onclick="insertPre()">Pre</button>
       <button class="editor-btn" onclick="insertQuote()">Quote</button>
+      <div class="separator"></div>
       <button class="editor-btn" onclick="insertLink()">Link</button>
       <button class="editor-btn" onclick="clearFormat()">Clear</button>
     </div>
@@ -529,6 +528,7 @@ async function notifyDownload(json) {
 </body>
 
 </html>
+
 
 
 
