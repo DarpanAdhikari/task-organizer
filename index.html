@@ -173,7 +173,8 @@ blockquote{border-left:4px solid #ccc;padding-left:10px;color:#555;margin:6px 0;
 let db;
 let currentTaskRef = null;
 let draggedItem = null;
-
+let firstRenderDone = false;
+  
 const request = indexedDB.open("TrelloSmoothDB", 1);
 request.onupgradeneeded = e => {
   db = e.target.result;
@@ -411,13 +412,17 @@ function render() {
     const cursor = e.target.result;
     if (cursor) {
       const u = cursor.value;
+      // Force closed on reload
+      if (u.collapsed === false && !window.firstRenderDone) {
+        u.collapsed = true;
+      }
       const div = document.createElement('div');
-      div.className = `workspace`;
+      div.className = `workspace ${u.collapsed ? 'collapsed' : ''}`;
       
       div.innerHTML = `
-        <div class="workspace-header">
-          <span onclick="toggleWorkspace('${u.name}')">▼ ${u.name}</span>
-          <button class="small-btn del-btn" onclick="deleteWorkspace('${u.name}')">Delete</button>
+        <div class="workspace-header" onclick="toggleWorkspace('${u.name}')">
+          <span class="toggle-icon">▼</span>
+          <span>${u.name}</span>
         </div>
         <div class="board-list">
           ${u.boards.map(b => `
@@ -466,6 +471,7 @@ function render() {
       cursor.continue();
     }
   };
+  firstRenderDone = true;
 }
 function insertCode(){
   document.execCommand("insertHTML", false, "<code>code</code>&nbsp;");
