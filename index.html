@@ -41,11 +41,12 @@
   #workspaces { display: flex; flex-direction: column; flex-grow: 1; overflow-y: auto; padding: 20px 24px; gap: 20px; padding-bottom: 60px;}
   
   .workspace-header {
-    display: flex; align-items: center; gap: 10px; color: white; cursor: pointer;
+    display: flex; align-items: center; justify-content: space-between; color: white; cursor: pointer;
     font-size: 1.2rem; font-weight: 600; padding: 5px 0; user-select: none;
     transition: opacity 0.2s;
   }
-  .workspace-header:hover { opacity: 0.8; }
+  .workspace-header-title { display: flex; align-items: center; gap: 10px; }
+  .workspace-header:hover { opacity: 0.9; }
   .toggle-icon { font-size: 0.8rem; transition: transform 0.3s; }
   .workspace.collapsed .toggle-icon { transform: rotate(-90deg); }
   .workspace.collapsed .board-list { display: none; }
@@ -339,6 +340,13 @@ function deleteTask(uName, bTitle, tId) {
   });
 }
 
+function deleteWorkspace(uName) {
+  if(!confirm(`Are you sure you want to delete the workspace "${uName}" and all its lists?`)) return;
+  const tx = db.transaction("users", "readwrite");
+  tx.objectStore("users").delete(uName);
+  tx.oncomplete = render;
+}
+
 function toggleWorkspace(uName) {
   updateUser(uName, u => u.collapsed = !u.collapsed);
 }
@@ -427,7 +435,7 @@ function render() {
 
       if (u.name.toLowerCase().includes(searchQuery)) {
         matchesSearch = true;
-        filteredBoards = u.boards; // Keep all boards if workspace matches
+        filteredBoards = u.boards; 
       } else {
         u.boards.forEach(b => {
           if (b.title.toLowerCase().includes(searchQuery)) {
@@ -448,7 +456,7 @@ function render() {
 
       if (searchQuery && !matchesSearch) {
         cursor.continue();
-        return; // Skip rendering this workspace entirely
+        return; 
       }
 
       const boardsToRender = searchQuery ? filteredBoards : u.boards;
@@ -458,8 +466,11 @@ function render() {
       
       div.innerHTML = `
         <div class="workspace-header" onclick="toggleWorkspace('${u.name}')">
-          <span class="toggle-icon">▼</span>
-          <span>${u.name}</span>
+          <div class="workspace-header-title">
+            <span class="toggle-icon">▼</span>
+            <span>${u.name}</span>
+          </div>
+          <button class="small-btn del-btn" onclick="event.stopPropagation(); deleteWorkspace('${u.name}')">Delete Workspace</button>
         </div>
         <div class="board-list">
           ${boardsToRender.map(b => `
