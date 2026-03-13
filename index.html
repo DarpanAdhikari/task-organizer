@@ -35,8 +35,10 @@
     color: white; padding: 12px 24px; display: flex; align-items: center; gap: 15px; 
     box-shadow: var(--shadow-sm); border-bottom: 1px solid rgba(255,255,255,0.2);
   }
+
+  .header-actions { display: flex; align-items: center; gap: 10px; margin-left: auto; }
   
-  #workspaces { display: flex; flex-direction: column; flex-grow: 1; overflow-y: auto; padding: 20px 24px; gap: 20px;}
+  #workspaces { display: flex; flex-direction: column; flex-grow: 1; overflow-y: auto; padding: 20px 24px; gap: 20px; padding-bottom: 60px;}
   
   .workspace-header {
     display: flex; align-items: center; gap: 10px; color: white; cursor: pointer;
@@ -70,12 +72,7 @@
   .task:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
   .task:active { cursor: grabbing; }
   
-  /* Dragging State Styles */
-  .task.dragging {
-    opacity: 0.5;
-    transform: scale(0.95);
-    box-shadow: none;
-  }
+  .task.dragging { opacity: 0.5; transform: scale(0.95); box-shadow: none; }
 
   .task-cover {
     width: 100%; height: 120px; object-fit: cover; 
@@ -86,11 +83,11 @@
   .task-title { font-weight: 500; font-size: 14px; margin-bottom: 4px; display: block; color: var(--text-main); }
   .task-desc-preview { font-size: 12px; color: var(--text-light); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
-  /* Ensure buttons are clickable even though task content ignores pointer events */
   .card-btns { display: flex; gap: 5px; margin-top: 8px; justify-content: flex-end; opacity: 0; transition: var(--transition); pointer-events: auto; }
   .task:hover .card-btns { opacity: 1; }
   .small-btn { font-size: 11px; padding: 4px 8px; border-radius: var(--border-radius-sm); border: none; cursor: pointer; transition: var(--transition); background: #f1f2f4; color: var(--text-light); }
   .small-btn:hover { background: #dcdfe4; color: var(--text-main); }
+  .view-btn:hover { background: #e9f2ff; color: var(--btn-primary); }
   .del-btn:hover { background: #ffebeb; color: var(--danger); }
 
   .modal-overlay {
@@ -100,57 +97,102 @@
     opacity: 0; transition: opacity 0.2s;
   }
   .modal-overlay.active { display: flex; opacity: 1; }
-  .modal { background: #f1f2f4; width: 650px; border-radius: var(--border-radius-lg); padding: 24px; box-shadow: var(--shadow-lg); }
+  .modal { background: #f1f2f4; width: 750px; max-width: 90%; max-height: 90vh; border-radius: var(--border-radius-lg); padding: 24px; box-shadow: var(--shadow-lg); display: flex; flex-direction: column;}
   
   .modal-header-input { width: 100%; font-size: 20px; font-weight: 600; border: 2px solid transparent; background: transparent; padding: 8px; margin-bottom: 15px; border-radius: var(--border-radius-md); transition: var(--transition); }
   .modal-header-input:focus { background: white; border-color: var(--btn-primary); outline: none; }
 
-  .editor-toolbar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;background:#fff;padding:8px;border-radius:10px 10px 0 0;border:1px solid #e4e6eb;border-bottom:none;box-shadow:0 2px 8px rgba(0,0,0,.05)}.editor-btn{display:flex;align-items:center;justify-content:center;padding:6px 12px;font-size:13px;font-weight:600;color:#555;background:#fff;border:1px solid transparent;border-radius:6px;cursor:pointer;transition:all .18s ease}.editor-btn:hover{background:#f5f6f8;border-color:#d0d4da;color:#111;transform:translateY(-1px)}.editor-btn:active{transform:scale(.95);background:#e9ebef}.editor-toolbar .separator{width:1px;height:20px;background:#e0e3e7;margin:0 4px}
+  .editor-toolbar { display:flex; align-items:center; gap:6px; flex-wrap:wrap; background:#fff; padding:8px; border-radius:10px 10px 0 0; border:1px solid #e4e6eb; border-bottom:none; box-shadow:0 2px 8px rgba(0,0,0,.05); }
+  .editor-btn { display:flex; align-items:center; justify-content:center; padding:6px 10px; font-size:12px; font-weight:600; color:#555; background:#fff; border:1px solid #e4e6eb; border-radius:4px; cursor:pointer; transition:all .18s ease; }
+  .editor-btn:hover { background:#f5f6f8; border-color:#d0d4da; color:#111; transform:translateY(-1px); }
+  .editor-btn:active { transform:scale(.95); background:#e9ebef; }
+  .editor-toolbar .separator { width:1px; height:20px; background:#e0e3e7; margin:0 4px; }
   
   .editable-desc {
-    background: white; border: 1px solid #dcdfe4; min-height: 200px; max-height: 400px;
-    padding: 16px; border-radius: 0 0 var(--border-radius-md) var(--border-radius-md); outline: none; overflow-y: auto; line-height: 1.5;
+    background: white; border: 1px solid #dcdfe4; flex-grow: 1; min-height: 250px;
+    padding: 16px; border-radius: 0 0 var(--border-radius-md) var(--border-radius-md); outline: none; overflow-y: auto; line-height: 1.6;
   }
-  .editable-desc img { max-width: 100%; border-radius: var(--border-radius-md); margin: 8px 0; box-shadow: var(--shadow-sm); }
+  .editable-desc img { max-width: 100%; border-radius: var(--border-radius-md); margin: 8px 0; box-shadow: var(--shadow-sm); transition: outline 0.2s; }
 
+  /* Beautiful View Styles */
+  .view-content { background: white; padding: 20px; border-radius: var(--border-radius-md); overflow-y: auto; line-height: 1.6; flex-grow: 1; box-shadow: inset 0 0 5px rgba(0,0,0,0.05);}
+  .view-content img { max-width: 100%; border-radius: 8px; }
+  .view-content h1, .view-content h2, .view-content h3 { color: var(--text-main); margin-top: 0; }
+  
   .input-group { padding: 10px; border-top: 1px solid #dcdfe4; display: flex; flex-direction: column; gap: 8px; }
-  input[type="text"] { width: 100%; padding: 10px; border-radius: var(--border-radius-sm); border: 2px solid #dcdfe4; box-sizing: border-box; transition: var(--transition); font-family: inherit;}
-  input[type="text"]:focus { border-color: var(--btn-primary); outline: none; }
+  input[type="text"], input[type="search"] { width: 100%; padding: 10px; border-radius: var(--border-radius-sm); border: 2px solid #dcdfe4; box-sizing: border-box; transition: var(--transition); font-family: inherit;}
+  input[type="text"]:focus, input[type="search"]:focus { border-color: var(--btn-primary); outline: none; }
   
   .btn-primary { background: var(--btn-primary); color: white; padding: 10px 16px; border: none; border-radius: var(--border-radius-sm); cursor: pointer; font-weight: 500; transition: var(--transition); }
   .btn-primary:hover { background: var(--btn-hover); }
-  code{background:#f4f4f4;padding:2px 6px;border-radius:4px;font-family:monospace;}
-.code-block{background:#1e1e1e;color:#fff;padding:12px;border-radius:6px;overflow:auto;font-family:monospace;}
-blockquote{border-left:4px solid #ccc;padding-left:10px;color:#555;margin:6px 0;}
+  
+  /* Shared Formatting Styles */
+  code { background: #f4f5f7; padding: 3px 6px; border-radius: 4px; font-family: "Courier New", Courier, monospace; color: #eb144c; font-size: 0.9em; }
+  .code-block { background: #1e1e1e; color: #d4d4d4; padding: 16px; border-radius: 8px; overflow: auto; font-family: "Courier New", Courier, monospace; margin: 10px 0; line-height: 1.4; box-shadow: inset 0 0 8px rgba(0,0,0,0.5);}
+  blockquote { border-left: 4px solid var(--btn-primary); background: #f9fbfc; padding: 10px 15px; color: #555; margin: 10px 0; border-radius: 0 4px 4px 0; font-style: italic;}
+  hr { border: 0; height: 1px; background: #dcdfe4; margin: 20px 0; }
 </style>
 </head>
 <body>
 
 <header>
-    <span style="font-size: 24px;"><img src="https://www.darpanadhikari.com.np/addition/images/logo.ico" alt=""></span> <strong style="font-size: 18px;">Darpan Task Organizer</strong>
-    <input type="text" id="newWorkspace" placeholder="New workspace name..." style="width: 220px; margin-left: 20px; padding: 8px;">
-    <button onclick="addUser()" class="btn-primary" style="padding: 8px 16px;">Create</button>
-    <!-- <button onclick="notifyDownload()">Trigger Notification</button> -->
+    <span style="font-size: 24px;"><img src="https://www.darpanadhikari.com.np/addition/images/logo.ico" alt="" height="24"></span> 
+    <strong style="font-size: 18px;">Darpan Task Organizer</strong>
+    
+    <div class="header-actions">
+        <input type="search" id="searchInput" placeholder="Search cards, lists, or workspaces..." style="width: 250px; padding: 8px;" onkeyup="render()">
+        <input type="text" id="newWorkspace" placeholder="New workspace name..." style="width: 200px; padding: 8px;">
+        <button onclick="addUser()" class="btn-primary" style="padding: 8px 16px;">Create</button>
+    </div>
 </header>
 
 <div id="workspaces"></div>
+
+<div class="modal-overlay" id="viewModalOverlay" onclick="closeViewModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h2 id="viewModalTitle" style="margin-top: 0; border-bottom: 2px solid #f1f2f4; padding-bottom: 10px;"></h2>
+    <div id="viewModalDesc" class="view-content"></div>
+    <div style="margin-top: 20px; display: flex; justify-content: flex-end;">
+      <button class="btn-primary" onclick="closeViewModal()">Close</button>
+    </div>
+  </div>
+</div>
 
 <div class="modal-overlay" id="modalOverlay">
   <div class="modal">
     <input type="text" id="modalTitle" class="modal-header-input">
     
-    <label style="font-size: 12px; font-weight: 600; color: var(--text-light); margin-left: 4px;">Description (Paste images here to create a cover!)</label>
+    <label style="font-size: 12px; font-weight: 600; color: var(--text-light); margin-left: 4px;">Description</label>
     <div class="editor-toolbar">
-      <button class="editor-btn" onclick="exec('bold')"><b>B</b></button>
-      <button class="editor-btn" onclick="exec('italic')"><i>I</i></button>
-      <button class="editor-btn" onclick="exec('insertUnorderedList')">• List</button>
+      <button class="editor-btn" onclick="exec('bold')" title="Bold"><b>B</b></button>
+      <button class="editor-btn" onclick="exec('italic')" title="Italic"><i>I</i></button>
+      <button class="editor-btn" onclick="exec('underline')" title="Underline"><u>U</u></button>
+      <button class="editor-btn" onclick="exec('insertUnorderedList')" title="Bullet List">• List</button>
       <div class="separator"></div>
-      <button class="editor-btn" onclick="insertCode()">Code</button>
-      <button class="editor-btn" onclick="insertPre()">Pre</button>
-      <button class="editor-btn" onclick="insertQuote()">Quote</button>
+      
+      <label style="font-size: 11px; margin-left: 4px;">Text:</label>
+      <input type="color" onchange="exec('foreColor', this.value)" style="width: 25px; height: 25px; border: none; cursor: pointer; padding: 0;">
+      <label style="font-size: 11px; margin-left: 4px;">Highlight:</label>
+      <input type="color" onchange="exec('hiliteColor', this.value)" style="width: 25px; height: 25px; border: none; cursor: pointer; padding: 0;">
+      
       <div class="separator"></div>
+      <button class="editor-btn" onclick="insertCode()" title="Inline Code">&lt;/&gt;</button>
+      <button class="editor-btn" onclick="insertPre()" title="Code Block">Code Block</button>
+      <button class="editor-btn" onclick="insertQuote()" title="Quote">""</button>
+      <button class="editor-btn" onclick="insertHR()" title="Horizontal Line">---</button>
       <button class="editor-btn" onclick="insertLink()">Link</button>
-      <button class="editor-btn" onclick="clearFormat()">Clear</button>
+      
+      <div class="separator"></div>
+      <label style="font-size: 11px; color: #888;">Image:</label>
+      <button class="editor-btn" onclick="imgFloat('left')" title="Float Left">◧</button>
+      <button class="editor-btn" onclick="imgFloat('none')" title="Center">◫</button>
+      <button class="editor-btn" onclick="imgFloat('right')" title="Float Right">◨</button>
+      <button class="editor-btn" onclick="imgSize('25%')" title="25% Size">S</button>
+      <button class="editor-btn" onclick="imgSize('50%')" title="50% Size">M</button>
+      <button class="editor-btn" onclick="imgSize('100%')" title="100% Size">L</button>
+      
+      <div class="separator"></div>
+      <button class="editor-btn" onclick="clearFormat()">Clear Formats</button>
     </div>
     <div id="modalDesc" class="editable-desc" contenteditable="true"></div>
 
@@ -160,20 +202,17 @@ blockquote{border-left:4px solid #ccc;padding-left:10px;color:#555;margin:6px 0;
     </div>
   </div>
 </div>
+
 <footer style="position: fixed; bottom: 0; width: 100%; background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); text-align: center; padding: 12px 0; box-shadow: var(--shadow-sm); border-top: 1px solid rgba(255,255,255,0.2);">
-    <span
-        ><i>&copy;</i><span id="date"></span
-        ><a href="https://darpanadhikari.com.np" target="_blank">
-        DarpanAdhikari</a
-        >
-        || All right reserved</span
-    >
+    <span><i>&copy;</i><span id="date"></span><a href="https://darpanadhikari.com.np" target="_blank" style="color: white; font-weight: bold; text-decoration: none; margin: 0 5px;">DarpanAdhikari</a>|| All right reserved</span>
 </footer>
+
 <script>
 let db;
 let currentTaskRef = null;
 let draggedItem = null;
-let firstRenderDone = false;
+let firstRenderDone = false; 
+let selectedImg = null;
   
 const request = indexedDB.open("TrelloSmoothDB", 1);
 request.onupgradeneeded = e => {
@@ -189,8 +228,10 @@ function updateUser(uName, cb) {
   const store = tx.objectStore("users");
   store.get(uName).onsuccess = e => {
     const u = e.target.result;
-    cb(u);
-    store.put(u);
+    if(u) {
+      cb(u);
+      store.put(u);
+    }
     tx.oncomplete = render;
   };
 }
@@ -208,7 +249,7 @@ function handleDragEnd(e) {
 }
 
 function handleDragOver(e) {
-  e.preventDefault(); // This is MANDATORY to allow a drop
+  e.preventDefault(); 
   e.dataTransfer.dropEffect = "move";
 }
 
@@ -216,10 +257,7 @@ function handleDrop(e, targetUName, targetBTitle) {
   e.preventDefault();
   if (!draggedItem) return;
 
-  // COPY the dragged item before dragend clears it
   const item = { ...draggedItem };
-
-  // Restriction check
   if (item.uName !== targetUName) {
     alert("Cross-workspace dragging is disabled.");
     return;
@@ -230,10 +268,8 @@ function handleDrop(e, targetUName, targetBTitle) {
   const targetId = afterElement ? Number(afterElement.dataset.id) : null;
 
   updateUser(item.uName, u => {
-
     const sourceBoard = u.boards.find(b => b.title === item.bTitle);
     const targetBoard = u.boards.find(b => b.title === targetBTitle);
-
     if (!sourceBoard || !targetBoard) return;
 
     const taskIndex = sourceBoard.tasks.findIndex(t => t.id === item.tId);
@@ -249,13 +285,12 @@ function handleDrop(e, targetUName, targetBTitle) {
     }
   });
 }
+
 function getDragAfterElement(container, y) {
   const draggableElements = [...container.querySelectorAll('.task:not(.dragging)')];
-
   return draggableElements.reduce((closest, child) => {
     const box = child.getBoundingClientRect();
     const offset = y - box.top - box.height / 2;
-
     if (offset < 0 && offset > closest.offset) {
       return { offset: offset, element: child };
     } else {
@@ -263,6 +298,7 @@ function getDragAfterElement(container, y) {
     }
   }, { offset: Number.NEGATIVE_INFINITY }).element;
 }
+
 // Data Actions
 function addUser() {
   const name = document.getElementById('newWorkspace').value.trim();
@@ -276,28 +312,13 @@ function addBoard(uName) {
   const val = document.getElementById(`nb-${uName}`).value.trim();
   if (!val) return;
   updateUser(uName, u => u.boards.push({ title: val, tasks: [] }));
-  let notifyJson = {
-      type: "text",
-      title: `New Board ${uName} is added`,
-      text: "Click to view",
-      url: "/empty"
-    };
-  notifyDownload(notifyJson);
 }
 
 function deleteBoard(uName, bTitle){
   if(!confirm("Delete this list?")) return;
-
   updateUser(uName, u=>{
     u.boards = u.boards.filter(b => b.title !== bTitle);
   });
-  let notifyJson = {
-      type: "text",
-      title: `Board ${uName} is deleted successfully`,
-      text: "Click to view",
-      url: "/empty"
-    };
-  notifyDownload(notifyJson);
 }
 
 function addTask(uName, bTitle) {
@@ -308,13 +329,6 @@ function addTask(uName, bTitle) {
       id: Date.now(), title: val, desc: "", html: "", cover: null 
     });
   });
-  let notifyJson = {
-      type: "text",
-      title: `New Task ${uName} is added to ${bTitle}`,
-      text: "Click to view",
-      url: "/empty"
-    };
-  notifyDownload(notifyJson);
 }
 
 function deleteTask(uName, bTitle, tId) {
@@ -323,36 +337,14 @@ function deleteTask(uName, bTitle, tId) {
     const b = u.boards.find(x => x.title === bTitle);
     b.tasks = b.tasks.filter(t => t.id !== tId);
   });
-  let notifyJson = {
-      type: "text",
-      title: `Task ${uName} is deleted successfully`,
-      text: "Click to view",
-      url: "/empty"
-    };
-  notifyDownload(notifyJson);
 }
 
 function toggleWorkspace(uName) {
   updateUser(uName, u => u.collapsed = !u.collapsed);
 }
 
-function deleteWorkspace(uName){
-  if(!confirm("Delete this workspace?")) return;
-
-  const tx = db.transaction("users","readwrite");
-  tx.objectStore("users").delete(uName);
-  tx.oncomplete = render;
-  let notifyJson = {
-      type: "text",
-      title: `Workspace ${uName} is deleted successfully`,
-      text: "Click to view",
-      url: "/empty"
-    };
-  notifyDownload(notifyJson);
-}
-// Modal & Cover Image Logic
+// Modals
 function openModal(e, uName, bTitle, tId) {
-  // Prevent opening modal if clicking edit/delete buttons
   if(e.target.closest('.small-btn')) return;
 
   const tx = db.transaction("users", "readonly");
@@ -361,12 +353,28 @@ function openModal(e, uName, bTitle, tId) {
     currentTaskRef = { uName, bTitle, tId };
     document.getElementById('modalTitle').value = task.title;
     document.getElementById('modalDesc').innerHTML = task.html || task.desc;
-    
     document.getElementById('modalOverlay').classList.add('active');
+    selectedImg = null; // reset image selection
   };
 }
 
 function closeModal() { document.getElementById('modalOverlay').classList.remove('active'); }
+
+function openViewModal(e, uName, bTitle, tId) {
+  e.stopPropagation();
+  const tx = db.transaction("users", "readonly");
+  tx.objectStore("users").get(uName).onsuccess = event => {
+    const task = event.target.result.boards.find(b => b.title === bTitle).tasks.find(t => t.id === tId);
+    document.getElementById('viewModalTitle').innerText = task.title;
+    document.getElementById('viewModalDesc').innerHTML = task.html || task.desc || "<i>No description provided.</i>";
+    document.getElementById('viewModalOverlay').classList.add('active');
+  };
+}
+
+function closeViewModal(e) {
+  if (e) e.stopPropagation();
+  document.getElementById('viewModalOverlay').classList.remove('active'); 
+}
 
 function extractCoverImage(htmlString) {
   const tempDiv = document.createElement('div');
@@ -376,12 +384,7 @@ function extractCoverImage(htmlString) {
 }
 
 function saveChanges() {
-  // Check if currentTaskRef exists to avoid the 'properties of null' error
-  if (!currentTaskRef) {
-    console.error("No task selected to save.");
-    closeModal();
-    return;
-  }
+  if (!currentTaskRef) return closeModal();
 
   const newTitle = document.getElementById('modalTitle').value;
   const newHtml = document.getElementById('modalDesc').innerHTML;
@@ -390,34 +393,68 @@ function saveChanges() {
 
   updateUser(currentTaskRef.uName, u => {
     const board = u.boards.find(x => x.title === currentTaskRef.bTitle);
-    if (!board) return; // Safety check
-    
+    if (!board) return; 
     const t = board.tasks.find(x => x.id === currentTaskRef.tId);
-    if (!t) return; // Safety check
+    if (!t) return; 
     
     t.title = newTitle;
     t.html = newHtml;
     t.desc = plainText.substring(0, 120); 
     t.cover = coverImgSrc; 
   });
-  
   closeModal();
 }
 
-// Render UI
+// Render UI with Search Filter
 function render() {
   const root = document.getElementById('workspaces');
   root.innerHTML = '';
+  const searchQuery = document.getElementById('searchInput').value.toLowerCase();
+
   db.transaction("users").objectStore("users").openCursor().onsuccess = e => {
     const cursor = e.target.result;
     if (cursor) {
       const u = cursor.value;
-      // Force closed on reload
-      if (u.collapsed === false && !window.firstRenderDone) {
+      
+      // Fix toggle bug: variable is now scoped correctly
+      if (u.collapsed === false && !firstRenderDone) {
         u.collapsed = true;
       }
+
+      // --- SEARCH FILTERING LOGIC ---
+      let matchesSearch = false;
+      let filteredBoards = [];
+
+      if (u.name.toLowerCase().includes(searchQuery)) {
+        matchesSearch = true;
+        filteredBoards = u.boards; // Keep all boards if workspace matches
+      } else {
+        u.boards.forEach(b => {
+          if (b.title.toLowerCase().includes(searchQuery)) {
+            matchesSearch = true;
+            filteredBoards.push(b);
+          } else {
+            const matchedTasks = b.tasks.filter(t => 
+              t.title.toLowerCase().includes(searchQuery) || 
+              (t.desc && t.desc.toLowerCase().includes(searchQuery))
+            );
+            if (matchedTasks.length > 0) {
+              matchesSearch = true;
+              filteredBoards.push({...b, tasks: matchedTasks});
+            }
+          }
+        });
+      }
+
+      if (searchQuery && !matchesSearch) {
+        cursor.continue();
+        return; // Skip rendering this workspace entirely
+      }
+
+      const boardsToRender = searchQuery ? filteredBoards : u.boards;
+
       const div = document.createElement('div');
-      div.className = `workspace ${u.collapsed ? 'collapsed' : ''}`;
+      div.className = `workspace ${u.collapsed && !searchQuery ? 'collapsed' : ''}`;
       
       div.innerHTML = `
         <div class="workspace-header" onclick="toggleWorkspace('${u.name}')">
@@ -425,14 +462,11 @@ function render() {
           <span>${u.name}</span>
         </div>
         <div class="board-list">
-          ${u.boards.map(b => `
+          ${boardsToRender.map(b => `
             <div class="board">
               <div class="board-header">
                 <h3>${b.title}</h3>
-                <button class="small-btn del-btn"
-                onclick="deleteBoard('${u.name}','${b.title}')">
-                Delete
-                </button>
+                <button class="small-btn del-btn" onclick="deleteBoard('${u.name}','${b.title}')">Delete</button>
               </div>
               <div class="tasks" ondragover="handleDragOver(event)" ondrop="handleDrop(event, '${u.name}', '${b.title}')">
                 
@@ -446,8 +480,8 @@ function render() {
                       <span class="task-title">${t.title}</span>
                       ${t.desc ? `<div class="task-desc-preview">${t.desc}</div>` : ''}
                       <div class="card-btns">
-                        <button class="small-btn edit-btn" onclick="event.stopPropagation();">Edit</button>
-                        <button class="small-btn del-btn" onclick="deleteTask('${u.name}', '${b.title}', ${t.id})">Delete</button>
+                        <button class="small-btn view-btn" onclick="openViewModal(event, '${u.name}', '${b.title}', ${t.id})">View</button>
+                        <button class="small-btn del-btn" onclick="event.stopPropagation(); deleteTask('${u.name}', '${b.title}', ${t.id})">Delete</button>
                       </div>
                     </div>
                   </div>
@@ -469,45 +503,85 @@ function render() {
         </div>`;
       root.appendChild(div);
       cursor.continue();
+    } else {
+      firstRenderDone = true;
     }
   };
-  firstRenderDone = true;
 }
+
+// --- Enhanced Editor Functions ---
 function insertCode(){
-  document.execCommand("insertHTML", false, "<code>code</code>&nbsp;");
+  const sel = window.getSelection();
+  if (sel.rangeCount && sel.toString().length > 0) {
+    const code = document.createElement('code');
+    code.textContent = sel.toString();
+    const range = sel.getRangeAt(0);
+    range.deleteContents();
+    range.insertNode(code);
+  } else {
+    document.execCommand("insertHTML", false, "<code>code</code>&nbsp;");
+  }
 }
 
 function insertPre(){
-  document.execCommand(
-    "insertHTML",
-    false,
-    "<pre class='code-block'><code>code</code></pre><p><br></p>"
-  );
+  document.execCommand('formatBlock', false, 'PRE');
+  // Add class for styling
+  const node = window.getSelection().anchorNode;
+  const pre = node.nodeType === 3 ? node.parentNode.closest('pre') : node.closest('pre');
+  if(pre) pre.className = 'code-block';
 }
 
 function insertQuote(){
-  document.execCommand(
-    "insertHTML",
-    false,
-    "<blockquote>quote</blockquote><p><br></p>"
-  );
+  document.execCommand('formatBlock', false, 'BLOCKQUOTE');
+}
+
+function insertHR(){
+  document.execCommand('insertHorizontalRule');
 }
 
 function insertLink(){
-  const url = prompt("Enter URL");
+  const url = prompt("Enter URL (e.g., https://google.com):");
   if(!url) return;
-  document.execCommand("insertHTML", false, `<a href="${url}" target="_blank">${url}</a>&nbsp;`);
+  document.execCommand("createLink", false, url);
 }
 
-  function clearFormat(){
-  const sel = window.getSelection();
-  if(!sel.rangeCount) return;
-
-  const range = sel.getRangeAt(0);
-  const text = range.toString();
-
-  document.execCommand("insertText", false, text);
+function clearFormat(){
+  document.execCommand("removeFormat");
+  document.execCommand("formatBlock", false, "p");
 }
+
+// Image Tools
+document.getElementById('modalDesc').addEventListener('click', (e) => {
+  if (e.target.tagName === 'IMG') {
+    if (selectedImg) selectedImg.style.outline = 'none';
+    selectedImg = e.target;
+    selectedImg.style.outline = '3px solid var(--btn-primary)';
+  } else {
+    if (selectedImg) {
+      selectedImg.style.outline = 'none';
+      selectedImg = null;
+    }
+  }
+});
+
+function imgFloat(alignment) {
+  if (selectedImg) {
+    selectedImg.style.display = alignment === 'none' ? 'block' : 'inline';
+    selectedImg.style.float = alignment;
+    selectedImg.style.margin = alignment === 'none' ? '10px auto' : '10px';
+  } else {
+    alert("Please click an image first to select it.");
+  }
+}
+
+function imgSize(size) {
+  if (selectedImg) {
+    selectedImg.style.width = size;
+  } else {
+    alert("Please click an image first to select it.");
+  }
+}
+
 document.getElementById("modalDesc").addEventListener("keydown", e=>{
   if(e.key==="Enter"){
     const sel=window.getSelection();
@@ -518,46 +592,6 @@ document.getElementById("modalDesc").addEventListener("keydown", e=>{
     }
   }
 });
-if ("serviceWorker" in navigator) {
-
-  navigator.serviceWorker.register("sw.js").then(() => {
-    console.log("SW registered");
-  });
-
-}
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("sw.js").then(() => {
-    console.log("SW registered");
-  });
-}
-
-async function requestNotificationPermission() {
-  if (Notification.permission === "granted") return true;
-
-  const permission = await Notification.requestPermission();
-  return permission === "granted";
-}
-
-async function notifyDownload(json) {
-
-  const allowed = await requestNotificationPermission();
-  if (!allowed) {
-    console.log("Notification permission denied");
-    return;
-  }
-
-  if (navigator.serviceWorker.controller) {
-    navigator.serviceWorker.controller.postMessage(json);
-  }
-
-}
 </script>
 </body>
-
 </html>
-
-
-
-
-
-
