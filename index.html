@@ -400,33 +400,37 @@
     }
     
     // --- Import / Export Logic (.drp Files) ---
-    function exportData() {
-      let filename = prompt("Enter filename for export:", "DarpanTasks");
-      if (!filename) return;
-      if (!filename.endsWith('.drp')) {
-          filename += '.drp';
-      }
-    
-      const tx = db.transaction("users", "readonly");
-      const req = tx.objectStore("users").getAll();
-      
-      req.onsuccess = (e) => {
-          const data = e.target.result;
-          const jsonStr = JSON.stringify(data);
-          const encryptedData = btoa(unescape(encodeURIComponent(jsonStr))); 
-          
-          const blob = new Blob([encryptedData], { type: 'application/octet-stream' });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = filename;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-          
-          sendNotification("Export Successful", `Tasks exported securely to ${filename}.`);
-      };
+    let fileHandle;
+    async function exportData() {
+        const tx = db.transaction("users", "readonly");
+        const req = tx.objectStore("users").getAll();
+
+        req.onsuccess = async (e) => {
+            const data = e.target.result;
+            const jsonStr = JSON.stringify(data);
+            const encryptedData = btoa(unescape(encodeURIComponent(jsonStr)));
+
+            // Ask user to choose file ONLY first time
+            if (!fileHandle) {
+                const firstTitle = document
+                    .querySelector(".workspace-header-title span:nth-child(2)")
+                    .textContent.trim();
+                fileHandle = await window.showSaveFilePicker({
+                    suggestedName: `${firstTitle}.drp`,
+                    types: [{
+                    description: "Darpan Tasks organizer Export developed by darpanadhikari.com.np",
+                    accept: { "application/octet-stream": [".drp"] }
+                    }]
+                });
+            }
+
+            // Overwrite file
+            const writable = await fileHandle.createWritable();
+            await writable.write(encryptedData);
+            await writable.close();
+
+            sendNotification("Export Successful", "Tasks exported and file replaced.");
+        };
     }
     
     function importData() {
