@@ -126,6 +126,8 @@
   
   .btn-primary { background: var(--btn-primary); color: white; padding: 10px 16px; border: none; border-radius: var(--border-radius-sm); cursor: pointer; font-weight: 500; transition: var(--transition); }
   .btn-primary:hover { background: var(--btn-hover); }
+  .btn-secondary { background: #091e42; color: white; padding: 8px 12px; border: none; border-radius: var(--border-radius-sm); cursor: pointer; font-weight: 500; transition: var(--transition); }
+  .btn-secondary:hover { background: #00122e; }
   
   /* Shared Formatting Styles */
   code { background: #f4f5f7; padding: 3px 6px; border-radius: 4px; font-family: "Courier New", Courier, monospace; color: #eb144c; font-size: 0.9em; }
@@ -141,9 +143,12 @@
     <strong style="font-size: 18px;">Darpan Task Organizer</strong>
     
     <div class="header-actions">
-        <input type="search" id="searchInput" placeholder="Search cards, lists, or workspaces..." style="width: 250px; padding: 8px;" onkeyup="render()">
-        <input type="text" id="newWorkspace" placeholder="New workspace name..." style="width: 200px; padding: 8px;">
+        <input type="search" id="searchInput" placeholder="Search cards, lists..." style="width: 200px; padding: 8px;" onkeyup="render()">
+        <input type="text" id="newWorkspace" placeholder="New workspace name..." style="width: 170px; padding: 8px;">
         <button onclick="addUser()" class="btn-primary" style="padding: 8px 16px;">Create</button>
+        <div style="width: 1px; height: 20px; background: rgba(255,255,255,0.3); margin: 0 5px;"></div>
+        <button onclick="importData()" class="btn-secondary">Import .drp</button>
+        <button onclick="exportData()" class="btn-secondary">Export .drp</button>
     </div>
 </header>
 
@@ -209,400 +214,529 @@
 </footer>
 
 <script>
-let db;
-let currentTaskRef = null;
-let draggedItem = null;
-let firstRenderDone = false; 
-let selectedImg = null;
-  
-const request = indexedDB.open("TrelloSmoothDB", 1);
-request.onupgradeneeded = e => {
-  db = e.target.result;
-  db.createObjectStore("users", { keyPath: "name" });
-};
-request.onsuccess = e => { db = e.target.result; render(); };
-
-function exec(cmd, val = null) { document.execCommand(cmd, false, val); }
-
-function updateUser(uName, cb) {
-  const tx = db.transaction("users", "readwrite");
-  const store = tx.objectStore("users");
-  store.get(uName).onsuccess = e => {
-    const u = e.target.result;
-    if(u) {
-      cb(u);
-      store.put(u);
-    }
-    tx.oncomplete = render;
-  };
-}
-
-// --- Drag and Drop Logic ---
-function handleDragStart(e, uName, bTitle, tId) {
-  draggedItem = { uName, bTitle, tId };
-  e.dataTransfer.effectAllowed = 'move';
-  setTimeout(() => e.target.classList.add('dragging'), 0);
-}
-
-function handleDragEnd(e) {
-  e.target.classList.remove('dragging');
-  setTimeout(() => draggedItem = null, 10);
-}
-
-function handleDragOver(e) {
-  e.preventDefault(); 
-  e.dataTransfer.dropEffect = "move";
-}
-
-function handleDrop(e, targetUName, targetBTitle) {
-  e.preventDefault();
-  if (!draggedItem) return;
-
-  const item = { ...draggedItem };
-  if (item.uName !== targetUName) {
-    alert("Cross-workspace dragging is disabled.");
-    return;
-  }
-
-  const container = e.currentTarget;
-  const afterElement = getDragAfterElement(container, e.clientY);
-  const targetId = afterElement ? Number(afterElement.dataset.id) : null;
-
-  updateUser(item.uName, u => {
-    const sourceBoard = u.boards.find(b => b.title === item.bTitle);
-    const targetBoard = u.boards.find(b => b.title === targetBTitle);
-    if (!sourceBoard || !targetBoard) return;
-
-    const taskIndex = sourceBoard.tasks.findIndex(t => t.id === item.tId);
-    if (taskIndex === -1) return;
-
-    const [movedTask] = sourceBoard.tasks.splice(taskIndex, 1);
-
-    if (targetId === null) {
-      targetBoard.tasks.push(movedTask);
-    } else {
-      const insertIndex = targetBoard.tasks.findIndex(t => t.id === targetId);
-      targetBoard.tasks.splice(insertIndex, 0, movedTask);
-    }
-  });
-}
-
-function getDragAfterElement(container, y) {
-  const draggableElements = [...container.querySelectorAll('.task:not(.dragging)')];
-  return draggableElements.reduce((closest, child) => {
-    const box = child.getBoundingClientRect();
-    const offset = y - box.top - box.height / 2;
-    if (offset < 0 && offset > closest.offset) {
-      return { offset: offset, element: child };
-    } else {
-      return closest;
-    }
-  }, { offset: Number.NEGATIVE_INFINITY }).element;
-}
-
-// Data Actions
-function addUser() {
-  const name = document.getElementById('newWorkspace').value.trim();
-  if (!name) return;
-  const tx = db.transaction("users", "readwrite");
-  tx.objectStore("users").add({ name, collapsed: false, boards: [] });
-  tx.oncomplete = () => { document.getElementById('newWorkspace').value = ''; render(); };
-}
-
-function addBoard(uName) {
-  const val = document.getElementById(`nb-${uName}`).value.trim();
-  if (!val) return;
-  updateUser(uName, u => u.boards.push({ title: val, tasks: [] }));
-}
-
-function deleteBoard(uName, bTitle){
-  if(!confirm("Delete this list?")) return;
-  updateUser(uName, u=>{
-    u.boards = u.boards.filter(b => b.title !== bTitle);
-  });
-}
-
-function addTask(uName, bTitle) {
-  const val = document.getElementById(`nt-${uName}-${bTitle}`).value.trim();
-  if (!val) return;
-  updateUser(uName, u => {
-    u.boards.find(x => x.title === bTitle).tasks.push({ 
-      id: Date.now(), title: val, desc: "", html: "", cover: null 
-    });
-  });
-}
-
-function deleteTask(uName, bTitle, tId) {
-  if(!confirm("Delete this card entirely?")) return;
-  updateUser(uName, u => {
-    const b = u.boards.find(x => x.title === bTitle);
-    b.tasks = b.tasks.filter(t => t.id !== tId);
-  });
-}
-
-function deleteWorkspace(uName) {
-  if(!confirm(`Are you sure you want to delete the workspace "${uName}" and all its lists?`)) return;
-  const tx = db.transaction("users", "readwrite");
-  tx.objectStore("users").delete(uName);
-  tx.oncomplete = render;
-}
-
-function toggleWorkspace(uName) {
-  updateUser(uName, u => u.collapsed = !u.collapsed);
-}
-
-// Modals
-function openModal(e, uName, bTitle, tId) {
-  if(e.target.closest('.small-btn')) return;
-
-  const tx = db.transaction("users", "readonly");
-  tx.objectStore("users").get(uName).onsuccess = event => {
-    const task = event.target.result.boards.find(b => b.title === bTitle).tasks.find(t => t.id === tId);
-    currentTaskRef = { uName, bTitle, tId };
-    document.getElementById('modalTitle').value = task.title;
-    document.getElementById('modalDesc').innerHTML = task.html || task.desc;
-    document.getElementById('modalOverlay').classList.add('active');
-    selectedImg = null; // reset image selection
-  };
-}
-
-function closeModal() { document.getElementById('modalOverlay').classList.remove('active'); }
-
-function openViewModal(e, uName, bTitle, tId) {
-  e.stopPropagation();
-  const tx = db.transaction("users", "readonly");
-  tx.objectStore("users").get(uName).onsuccess = event => {
-    const task = event.target.result.boards.find(b => b.title === bTitle).tasks.find(t => t.id === tId);
-    document.getElementById('viewModalTitle').innerText = task.title;
-    document.getElementById('viewModalDesc').innerHTML = task.html || task.desc || "<i>No description provided.</i>";
-    document.getElementById('viewModalOverlay').classList.add('active');
-  };
-}
-
-function closeViewModal(e) {
-  if (e) e.stopPropagation();
-  document.getElementById('viewModalOverlay').classList.remove('active'); 
-}
-
-function extractCoverImage(htmlString) {
-  const tempDiv = document.createElement('div');
-  tempDiv.innerHTML = htmlString;
-  const img = tempDiv.querySelector('img');
-  return img ? img.src : null;
-}
-
-function saveChanges() {
-  if (!currentTaskRef) return closeModal();
-
-  const newTitle = document.getElementById('modalTitle').value;
-  const newHtml = document.getElementById('modalDesc').innerHTML;
-  const plainText = document.getElementById('modalDesc').innerText;
-  const coverImgSrc = extractCoverImage(newHtml);
-
-  updateUser(currentTaskRef.uName, u => {
-    const board = u.boards.find(x => x.title === currentTaskRef.bTitle);
-    if (!board) return; 
-    const t = board.tasks.find(x => x.id === currentTaskRef.tId);
-    if (!t) return; 
+    let db;
+    let currentTaskRef = null;
+    let draggedItem = null;
+    let selectedImg = null;
     
-    t.title = newTitle;
-    t.html = newHtml;
-    t.desc = plainText.substring(0, 120); 
-    t.cover = coverImgSrc; 
-  });
-  closeModal();
-}
-
-// Render UI with Search Filter
-function render() {
-  const root = document.getElementById('workspaces');
-  root.innerHTML = '';
-  const searchQuery = document.getElementById('searchInput').value.toLowerCase();
-
-  db.transaction("users").objectStore("users").openCursor().onsuccess = e => {
-    const cursor = e.target.result;
-    if (cursor) {
-      const u = cursor.value;
-      
-      // Fix toggle bug: variable is now scoped correctly
-      if (u.collapsed === false && !firstRenderDone) {
-        u.collapsed = true;
+    // ==========================================
+    // 1. SERVICE WORKER & NOTIFICATIONS BRIDGE
+    // ==========================================
+    document.addEventListener("DOMContentLoaded", () => {
+      // Register Service Worker
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("sw.js")
+          .then(() => console.log("Service Worker Registered"))
+          .catch(err => console.error("SW Registration Failed", err));
       }
-
-      // --- SEARCH FILTERING LOGIC ---
-      let matchesSearch = false;
-      let filteredBoards = [];
-
-      if (u.name.toLowerCase().includes(searchQuery)) {
-        matchesSearch = true;
-        filteredBoards = u.boards; 
-      } else {
-        u.boards.forEach(b => {
-          if (b.title.toLowerCase().includes(searchQuery)) {
-            matchesSearch = true;
-            filteredBoards.push(b);
-          } else {
-            const matchedTasks = b.tasks.filter(t => 
-              t.title.toLowerCase().includes(searchQuery) || 
-              (t.desc && t.desc.toLowerCase().includes(searchQuery))
-            );
-            if (matchedTasks.length > 0) {
-              matchesSearch = true;
-              filteredBoards.push({...b, tasks: matchedTasks});
-            }
-          }
+      // Request Notification Permission
+      if ("Notification" in window && Notification.permission === "default") {
+        Notification.requestPermission();
+      }
+    });
+    
+    // Helper function to trigger notifications via SW
+    function sendNotification(title, text) {
+      if ("Notification" in window && Notification.permission === "granted" && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({
+          type: "text",
+          title: title,
+          text: text,
+          icon: "https://www.darpanadhikari.com.np/addition/images/logo.ico"
         });
       }
-
-      if (searchQuery && !matchesSearch) {
-        cursor.continue();
-        return; 
-      }
-
-      const boardsToRender = searchQuery ? filteredBoards : u.boards;
-
-      const div = document.createElement('div');
-      div.className = `workspace ${u.collapsed && !searchQuery ? 'collapsed' : ''}`;
-      
-      div.innerHTML = `
-        <div class="workspace-header" onclick="toggleWorkspace('${u.name}')">
-          <div class="workspace-header-title">
-            <span class="toggle-icon">▼</span>
-            <span>${u.name}</span>
-          </div>
-          <button class="small-btn del-btn" onclick="event.stopPropagation(); deleteWorkspace('${u.name}')">Delete Workspace</button>
-        </div>
-        <div class="board-list">
-          ${boardsToRender.map(b => `
-            <div class="board">
-              <div class="board-header">
-                <h3>${b.title}</h3>
-                <button class="small-btn del-btn" onclick="deleteBoard('${u.name}','${b.title}')">Delete</button>
-              </div>
-              <div class="tasks" ondragover="handleDragOver(event)" ondrop="handleDrop(event, '${u.name}', '${b.title}')">
-                
-                ${b.tasks.map(t => `
-                  <div class="task" draggable="true" data-id="${t.id}"
-                       ondragstart="handleDragStart(event, '${u.name}', '${b.title}', ${t.id})" 
-                       ondragend="handleDragEnd(event)"
-                       onclick="openModal(event, '${u.name}', '${b.title}', ${t.id})">
-                    ${t.cover ? `<img src="${t.cover}" class="task-cover">` : ''}
-                    <div class="task-content">
-                      <span class="task-title">${t.title}</span>
-                      ${t.desc ? `<div class="task-desc-preview">${t.desc}</div>` : ''}
-                      <div class="card-btns">
-                        <button class="small-btn view-btn" onclick="openViewModal(event, '${u.name}', '${b.title}', ${t.id})">View</button>
-                        <button class="small-btn del-btn" onclick="event.stopPropagation(); deleteTask('${u.name}', '${b.title}', ${t.id})">Delete</button>
-                      </div>
-                    </div>
-                  </div>
-                `).join('')}
-              </div>
-
-              <div class="input-group">
-                <input type="text" id="nt-${u.name}-${b.title}" placeholder="Add a card..." onkeypress="if(event.key === 'Enter') addTask('${u.name}','${b.title}')">
-                <button class="btn-primary" onclick="addTask('${u.name}', '${b.title}')">Add Card</button>
-              </div>
-            </div>
-          `).join('')}
-          <div class="board" style="background: rgba(255,255,255,0.8); border: 2px dashed rgba(0,0,0,0.1); box-shadow: none;">
-            <div class="input-group" style="border-top: none;">
-              <input type="text" id="nb-${u.name}" placeholder="New list name..." onkeypress="if(event.key === 'Enter') addBoard('${u.name}')">
-              <button class="btn-primary" onclick="addBoard('${u.name}')">Add List</button>
-            </div>
-          </div>
-        </div>`;
-      root.appendChild(div);
-      cursor.continue();
-    } else {
-      firstRenderDone = true;
     }
-  };
-}
-
-// --- Enhanced Editor Functions ---
-function insertCode(){
-  const sel = window.getSelection();
-  if (sel.rangeCount && sel.toString().length > 0) {
-    const code = document.createElement('code');
-    code.textContent = sel.toString();
-    const range = sel.getRangeAt(0);
-    range.deleteContents();
-    range.insertNode(code);
-  } else {
-    document.execCommand("insertHTML", false, "<code>code</code>&nbsp;");
-  }
-}
-
-function insertPre(){
-  document.execCommand('formatBlock', false, 'PRE');
-  // Add class for styling
-  const node = window.getSelection().anchorNode;
-  const pre = node.nodeType === 3 ? node.parentNode.closest('pre') : node.closest('pre');
-  if(pre) pre.className = 'code-block';
-}
-
-function insertQuote(){
-  document.execCommand('formatBlock', false, 'BLOCKQUOTE');
-}
-
-function insertHR(){
-  document.execCommand('insertHorizontalRule');
-}
-
-function insertLink(){
-  const url = prompt("Enter URL (e.g., https://google.com):");
-  if(!url) return;
-  document.execCommand("createLink", false, url);
-}
-
-function clearFormat(){
-  document.execCommand("removeFormat");
-  document.execCommand("formatBlock", false, "p");
-}
-
-// Image Tools
-document.getElementById('modalDesc').addEventListener('click', (e) => {
-  if (e.target.tagName === 'IMG') {
-    if (selectedImg) selectedImg.style.outline = 'none';
-    selectedImg = e.target;
-    selectedImg.style.outline = '3px solid var(--btn-primary)';
-  } else {
-    if (selectedImg) {
-      selectedImg.style.outline = 'none';
-      selectedImg = null;
+    // ==========================================
+    
+    
+    const request = indexedDB.open("TrelloSmoothDB", 1);
+    request.onupgradeneeded = e => {
+      db = e.target.result;
+      db.createObjectStore("users", { keyPath: "name" });
+    };
+    request.onsuccess = e => { db = e.target.result; render(); };
+    
+    function exec(cmd, val = null) { document.execCommand(cmd, false, val); }
+    
+    function updateUser(uName, cb) {
+      const tx = db.transaction("users", "readwrite");
+      const store = tx.objectStore("users");
+      store.get(uName).onsuccess = e => {
+        const u = e.target.result;
+        if(u) {
+          cb(u);
+          store.put(u);
+        }
+        tx.oncomplete = render;
+      };
     }
-  }
-});
-
-function imgFloat(alignment) {
-  if (selectedImg) {
-    selectedImg.style.display = alignment === 'none' ? 'block' : 'inline';
-    selectedImg.style.float = alignment;
-    selectedImg.style.margin = alignment === 'none' ? '10px auto' : '10px';
-  } else {
-    alert("Please click an image first to select it.");
-  }
-}
-
-function imgSize(size) {
-  if (selectedImg) {
-    selectedImg.style.width = size;
-  } else {
-    alert("Please click an image first to select it.");
-  }
-}
-
-document.getElementById("modalDesc").addEventListener("keydown", e=>{
-  if(e.key==="Enter"){
-    const sel=window.getSelection();
-    const node=sel.anchorNode;
-    if(node && node.parentElement.closest("pre")){
+    
+    // --- Drag and Drop Logic ---
+    function handleDragStart(e, uName, bTitle, tId) {
+      draggedItem = { uName, bTitle, tId };
+      e.dataTransfer.effectAllowed = 'move';
+      setTimeout(() => e.target.classList.add('dragging'), 0);
+    }
+    
+    function handleDragEnd(e) {
+      e.target.classList.remove('dragging');
+      setTimeout(() => draggedItem = null, 10);
+    }
+    
+    function handleDragOver(e) {
+      e.preventDefault(); 
+      e.dataTransfer.dropEffect = "move";
+    }
+    
+    function handleDrop(e, targetUName, targetBTitle) {
       e.preventDefault();
-      document.execCommand("insertHTML",false,"</pre><p><br></p>");
+      if (!draggedItem) return;
+    
+      const item = { ...draggedItem };
+      if (item.uName !== targetUName) {
+        alert("Cross-workspace dragging is disabled.");
+        return;
+      }
+    
+      const container = e.currentTarget;
+      const afterElement = getDragAfterElement(container, e.clientY);
+      const targetId = afterElement ? Number(afterElement.dataset.id) : null;
+    
+      updateUser(item.uName, u => {
+        const sourceBoard = u.boards.find(b => b.title === item.bTitle);
+        const targetBoard = u.boards.find(b => b.title === targetBTitle);
+        if (!sourceBoard || !targetBoard) return;
+    
+        const taskIndex = sourceBoard.tasks.findIndex(t => t.id === item.tId);
+        if (taskIndex === -1) return;
+    
+        const [movedTask] = sourceBoard.tasks.splice(taskIndex, 1);
+    
+        if (targetId === null) {
+          targetBoard.tasks.push(movedTask);
+        } else {
+          const insertIndex = targetBoard.tasks.findIndex(t => t.id === targetId);
+          targetBoard.tasks.splice(insertIndex, 0, movedTask);
+        }
+      });
+      
+      sendNotification("Card Moved", `Card was moved to list "${targetBTitle}".`);
     }
-  }
-});
-</script>
+    
+    function getDragAfterElement(container, y) {
+      const draggableElements = [...container.querySelectorAll('.task:not(.dragging)')];
+      return draggableElements.reduce((closest, child) => {
+        const box = child.getBoundingClientRect();
+        const offset = y - box.top - box.height / 2;
+        if (offset < 0 && offset > closest.offset) {
+          return { offset: offset, element: child };
+        } else {
+          return closest;
+        }
+      }, { offset: Number.NEGATIVE_INFINITY }).element;
+    }
+    
+    // Data Actions
+    function addUser() {
+      const name = document.getElementById('newWorkspace').value.trim();
+      if (!name) return;
+      const tx = db.transaction("users", "readwrite");
+      // collapsed: false ensures it is open by default
+      tx.objectStore("users").add({ name, collapsed: false, boards: [] });
+      tx.oncomplete = () => { 
+          document.getElementById('newWorkspace').value = ''; 
+          render(); 
+          sendNotification("Workspace Created", `Workspace "${name}" is ready.`);
+      };
+    }
+    
+    function addBoard(uName) {
+      const val = document.getElementById(`nb-${uName}`).value.trim();
+      if (!val) return;
+      updateUser(uName, u => u.boards.push({ title: val, tasks: [] }));
+      sendNotification("List Added", `List "${val}" was added to ${uName}.`);
+    }
+    
+    function deleteBoard(uName, bTitle){
+      if(!confirm("Delete this list?")) return;
+      updateUser(uName, u=>{
+        u.boards = u.boards.filter(b => b.title !== bTitle);
+      });
+      sendNotification("List Deleted", `List "${bTitle}" was removed.`);
+    }
+    
+    function addTask(uName, bTitle) {
+      const val = document.getElementById(`nt-${uName}-${bTitle}`).value.trim();
+      if (!val) return;
+      updateUser(uName, u => {
+        u.boards.find(x => x.title === bTitle).tasks.push({ 
+          id: Date.now(), title: val, desc: "", html: "", cover: null 
+        });
+      });
+      sendNotification("Card Added", `Card "${val}" added to ${bTitle}.`);
+    }
+    
+    function deleteTask(uName, bTitle, tId) {
+      if(!confirm("Delete this card entirely?")) return;
+      updateUser(uName, u => {
+        const b = u.boards.find(x => x.title === bTitle);
+        b.tasks = b.tasks.filter(t => t.id !== tId);
+      });
+      sendNotification("Card Deleted", `A card was removed from ${bTitle}.`);
+    }
+    
+    function deleteWorkspace(uName) {
+      if(!confirm(`Are you sure you want to delete the workspace "${uName}" and all its lists?`)) return;
+      const tx = db.transaction("users", "readwrite");
+      tx.objectStore("users").delete(uName);
+      tx.oncomplete = () => {
+          render();
+          sendNotification("Workspace Deleted", `Workspace "${uName}" was permanently deleted.`);
+      };
+    }
+    
+    function toggleWorkspace(uName) {
+      updateUser(uName, u => u.collapsed = !u.collapsed);
+    }
+    
+    // --- Import / Export Logic (.drp Files) ---
+    function exportData() {
+      let filename = prompt("Enter filename for export:", "DarpanTasks");
+      if (!filename) return;
+      if (!filename.endsWith('.drp')) {
+          filename += '.drp';
+      }
+    
+      const tx = db.transaction("users", "readonly");
+      const req = tx.objectStore("users").getAll();
+      
+      req.onsuccess = (e) => {
+          const data = e.target.result;
+          const jsonStr = JSON.stringify(data);
+          const encryptedData = btoa(unescape(encodeURIComponent(jsonStr))); 
+          
+          const blob = new Blob([encryptedData], { type: 'application/octet-stream' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          
+          sendNotification("Export Successful", `Tasks exported securely to ${filename}.`);
+      };
+    }
+    
+    function importData() {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.drp';
+      input.onchange = (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+    
+          const reader = new FileReader();
+          reader.onload = (event) => {
+              try {
+                  const encryptedData = event.target.result;
+                  const jsonStr = decodeURIComponent(escape(atob(encryptedData)));
+                  const importedWorkspaces = JSON.parse(jsonStr);
+                  mergeImportedData(importedWorkspaces);
+              } catch (error) {
+                  alert("Error: Invalid or corrupted .drp file. Ensure it was exported from this software.");
+              }
+          };
+          reader.readAsText(file);
+      };
+      input.click();
+    }
+    
+    function mergeImportedData(importedWorkspaces) {
+      if (!Array.isArray(importedWorkspaces)) return alert("Invalid data format.");
+    
+      const tx = db.transaction("users", "readwrite");
+      const store = tx.objectStore("users");
+      
+      store.getAll().onsuccess = (e) => {
+          const existingWorkspaces = e.target.result;
+          
+          importedWorkspaces.forEach(impWs => {
+              const exWs = existingWorkspaces.find(w => w.name === impWs.name);
+              
+              if (!exWs) {
+                  store.add(impWs);
+              } else {
+                  let needsUpdate = false;
+                  impWs.boards.forEach(impBoard => {
+                      const exBoard = exWs.boards.find(b => b.title === impBoard.title);
+                      if (!exBoard) {
+                          exWs.boards.push(impBoard);
+                          needsUpdate = true;
+                      } else {
+                          impBoard.tasks.forEach(impTask => {
+                              const exTask = exBoard.tasks.find(t => t.id === impTask.id);
+                              if (!exTask) {
+                                  exBoard.tasks.push(impTask);
+                                  needsUpdate = true;
+                              }
+                          });
+                      }
+                  });
+                  if (needsUpdate) store.put(exWs);
+              }
+          });
+      };
+      
+      tx.oncomplete = () => {
+          alert("Data successfully imported and merged without overwriting existing items.");
+          render();
+          sendNotification("Import Successful", "Your .drp tasks have been merged into your workspace.");
+      };
+    }
+    
+    // Modals
+    function openModal(e, uName, bTitle, tId) {
+      if(e.target.closest('.small-btn')) return;
+    
+      const tx = db.transaction("users", "readonly");
+      tx.objectStore("users").get(uName).onsuccess = event => {
+        const task = event.target.result.boards.find(b => b.title === bTitle).tasks.find(t => t.id === tId);
+        currentTaskRef = { uName, bTitle, tId };
+        document.getElementById('modalTitle').value = task.title;
+        document.getElementById('modalDesc').innerHTML = task.html || task.desc;
+        document.getElementById('modalOverlay').classList.add('active');
+        selectedImg = null; 
+      };
+    }
+    
+    function closeModal() { document.getElementById('modalOverlay').classList.remove('active'); }
+    
+    function openViewModal(e, uName, bTitle, tId) {
+      e.stopPropagation();
+      const tx = db.transaction("users", "readonly");
+      tx.objectStore("users").get(uName).onsuccess = event => {
+        const task = event.target.result.boards.find(b => b.title === bTitle).tasks.find(t => t.id === tId);
+        document.getElementById('viewModalTitle').innerText = task.title;
+        document.getElementById('viewModalDesc').innerHTML = task.html || task.desc || "<i>No description provided.</i>";
+        document.getElementById('viewModalOverlay').classList.add('active');
+      };
+    }
+    
+    function closeViewModal(e) {
+      if (e) e.stopPropagation();
+      document.getElementById('viewModalOverlay').classList.remove('active'); 
+    }
+    
+    function extractCoverImage(htmlString) {
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = htmlString;
+      const img = tempDiv.querySelector('img');
+      return img ? img.src : null;
+    }
+    
+    function saveChanges() {
+      if (!currentTaskRef) return closeModal();
+    
+      const newTitle = document.getElementById('modalTitle').value;
+      const newHtml = document.getElementById('modalDesc').innerHTML;
+      const plainText = document.getElementById('modalDesc').innerText;
+      const coverImgSrc = extractCoverImage(newHtml);
+    
+      updateUser(currentTaskRef.uName, u => {
+        const board = u.boards.find(x => x.title === currentTaskRef.bTitle);
+        if (!board) return; 
+        const t = board.tasks.find(x => x.id === currentTaskRef.tId);
+        if (!t) return; 
+        
+        t.title = newTitle;
+        t.html = newHtml;
+        t.desc = plainText.substring(0, 120); 
+        t.cover = coverImgSrc; 
+      });
+      
+      closeModal();
+      sendNotification("Card Updated", `Changes to "${newTitle}" were saved.`);
+    }
+    
+    // Render UI with Search Filter & Bug Fixes
+    function render() {
+      const searchQuery = document.getElementById('searchInput').value.toLowerCase();
+    
+      const req = db.transaction("users").objectStore("users").getAll();
+      req.onsuccess = e => {
+        const root = document.getElementById('workspaces');
+        root.innerHTML = '';
+        const users = e.target.result;
+    
+        users.forEach(u => {
+          let matchesSearch = false;
+          let filteredBoards = [];
+    
+          if (u.name.toLowerCase().includes(searchQuery)) {
+            matchesSearch = true;
+            filteredBoards = u.boards; 
+          } else {
+            u.boards.forEach(b => {
+              if (b.title.toLowerCase().includes(searchQuery)) {
+                matchesSearch = true;
+                filteredBoards.push(b);
+              } else {
+                const matchedTasks = b.tasks.filter(t => 
+                  t.title.toLowerCase().includes(searchQuery) || 
+                  (t.desc && t.desc.toLowerCase().includes(searchQuery))
+                );
+                if (matchedTasks.length > 0) {
+                  matchesSearch = true;
+                  filteredBoards.push({...b, tasks: matchedTasks});
+                }
+              }
+            });
+          }
+    
+          if (searchQuery && !matchesSearch) return;
+    
+          const boardsToRender = searchQuery ? filteredBoards : u.boards;
+    
+          const div = document.createElement('div');
+          div.className = `workspace ${u.collapsed && !searchQuery ? 'collapsed' : ''}`;
+          
+          div.innerHTML = `
+            <div class="workspace-header" onclick="toggleWorkspace('${u.name}')">
+              <div class="workspace-header-title">
+                <span class="toggle-icon">▼</span>
+                <span>${u.name}</span>
+              </div>
+              <button class="small-btn del-btn" onclick="event.stopPropagation(); deleteWorkspace('${u.name}')">Delete Workspace</button>
+            </div>
+            <div class="board-list">
+              ${boardsToRender.map(b => `
+                <div class="board">
+                  <div class="board-header">
+                    <h3>${b.title}</h3>
+                    <button class="small-btn del-btn" onclick="deleteBoard('${u.name}','${b.title}')">Delete</button>
+                  </div>
+                  <div class="tasks" ondragover="handleDragOver(event)" ondrop="handleDrop(event, '${u.name}', '${b.title}')">
+                    
+                    ${b.tasks.map(t => `
+                      <div class="task" draggable="true" data-id="${t.id}"
+                           ondragstart="handleDragStart(event, '${u.name}', '${b.title}', ${t.id})" 
+                           ondragend="handleDragEnd(event)"
+                           onclick="openModal(event, '${u.name}', '${b.title}', ${t.id})">
+                        ${t.cover ? `<img src="${t.cover}" class="task-cover">` : ''}
+                        <div class="task-content">
+                          <span class="task-title">${t.title}</span>
+                          ${t.desc ? `<div class="task-desc-preview">${t.desc}</div>` : ''}
+                          <div class="card-btns">
+                            <button class="small-btn view-btn" onclick="openViewModal(event, '${u.name}', '${b.title}', ${t.id})">View</button>
+                            <button class="small-btn del-btn" onclick="event.stopPropagation(); deleteTask('${u.name}', '${b.title}', ${t.id})">Delete</button>
+                          </div>
+                        </div>
+                      </div>
+                    `).join('')}
+                  </div>
+    
+                  <div class="input-group">
+                    <input type="text" id="nt-${u.name}-${b.title}" placeholder="Add a card..." onkeypress="if(event.key === 'Enter') addTask('${u.name}','${b.title}')">
+                    <button class="btn-primary" onclick="addTask('${u.name}', '${b.title}')">Add Card</button>
+                  </div>
+                </div>
+              `).join('')}
+              <div class="board" style="background: rgba(255,255,255,0.8); border: 2px dashed rgba(0,0,0,0.1); box-shadow: none;">
+                <div class="input-group" style="border-top: none;">
+                  <input type="text" id="nb-${u.name}" placeholder="New list name..." onkeypress="if(event.key === 'Enter') addBoard('${u.name}')">
+                  <button class="btn-primary" onclick="addBoard('${u.name}')">Add List</button>
+                </div>
+              </div>
+            </div>`;
+          root.appendChild(div);
+        });
+      };
+    }
+    
+    // --- Enhanced Editor Functions ---
+    function insertCode(){
+      const sel = window.getSelection();
+      if (sel.rangeCount && sel.toString().length > 0) {
+        const code = document.createElement('code');
+        code.textContent = sel.toString();
+        const range = sel.getRangeAt(0);
+        range.deleteContents();
+        range.insertNode(code);
+      } else {
+        document.execCommand("insertHTML", false, "<code>code</code>&nbsp;");
+      }
+    }
+    
+    function insertPre(){
+      document.execCommand('formatBlock', false, 'PRE');
+      const node = window.getSelection().anchorNode;
+      const pre = node.nodeType === 3 ? node.parentNode.closest('pre') : node.closest('pre');
+      if(pre) pre.className = 'code-block';
+    }
+    
+    function insertQuote(){
+      document.execCommand('formatBlock', false, 'BLOCKQUOTE');
+    }
+    
+    function insertHR(){
+      document.execCommand('insertHorizontalRule');
+    }
+    
+    function insertLink(){
+      const url = prompt("Enter URL (e.g., https://google.com):");
+      if(!url) return;
+      document.execCommand("createLink", false, url);
+    }
+    
+    function clearFormat(){
+      document.execCommand("removeFormat");
+      document.execCommand("formatBlock", false, "p");
+    }
+    
+    // Image Tools
+    document.getElementById('modalDesc').addEventListener('click', (e) => {
+      if (e.target.tagName === 'IMG') {
+        if (selectedImg) selectedImg.style.outline = 'none';
+        selectedImg = e.target;
+        selectedImg.style.outline = '3px solid var(--btn-primary)';
+      } else {
+        if (selectedImg) {
+          selectedImg.style.outline = 'none';
+          selectedImg = null;
+        }
+      }
+    });
+    
+    function imgFloat(alignment) {
+      if (selectedImg) {
+        selectedImg.style.display = alignment === 'none' ? 'block' : 'inline';
+        selectedImg.style.float = alignment;
+        selectedImg.style.margin = alignment === 'none' ? '10px auto' : '10px';
+      } else {
+        alert("Please click an image first to select it.");
+      }
+    }
+    
+    function imgSize(size) {
+      if (selectedImg) {
+        selectedImg.style.width = size;
+      } else {
+        alert("Please click an image first to select it.");
+      }
+    }
+    
+    document.getElementById("modalDesc").addEventListener("keydown", e=>{
+      if(e.key==="Enter"){
+        const sel=window.getSelection();
+        const node=sel.anchorNode;
+        if(node && node.parentElement.closest("pre")){
+          e.preventDefault();
+          document.execCommand("insertHTML",false,"</pre><p><br></p>");
+        }
+      }
+    });
+    </script>
 </body>
 </html>
