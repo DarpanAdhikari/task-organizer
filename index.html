@@ -741,6 +741,76 @@
         }
       }
     });
-    </script>
+const editor = document.getElementById("modalDesc");
+let selectedImg = null;
+
+// --- Image Selection ---
+editor.addEventListener('click', e => {
+  if (e.target.tagName === 'IMG') {
+    if (selectedImg) selectedImg.style.outline = 'none';
+    selectedImg = e.target;
+    selectedImg.style.outline = '3px solid var(--btn-primary)';
+  } else if (selectedImg) {
+    selectedImg.style.outline = 'none';
+    selectedImg = null;
+  }
+});
+
+// --- Compression Helper ---
+function compressImage(file, maxWidth = 800, quality = 0.7, callback) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const ratio = Math.min(1, maxWidth / img.width);
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width * ratio;
+      canvas.height = img.height * ratio;
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob(blob => callback(blob), 'image/jpeg', quality);
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+// --- Insert Image into Editor ---
+function insertImageBlob(blob) {
+  const imgURL = URL.createObjectURL(blob);
+  const img = document.createElement('img');
+  img.src = imgURL;
+  img.style.maxWidth = "100%";
+
+  const sel = window.getSelection();
+  if (!sel.rangeCount) return;
+  const range = sel.getRangeAt(0);
+  range.insertNode(img);
+  range.setStartAfter(img);
+  range.collapse(true);
+}
+
+// --- Handle Drag & Drop ---
+editor.addEventListener("dragover", e => e.preventDefault());
+
+editor.addEventListener("drop", e => {
+  e.preventDefault();
+  const file = e.dataTransfer.files[0];
+  if (!file || !file.type.startsWith("image/")) return;
+  compressImage(file, 800, 0.7, insertImageBlob);
+});
+
+// --- Handle Paste (Screenshots) ---
+editor.addEventListener("paste", e => {
+  const items = e.clipboardData.items;
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    if (item.type.startsWith("image/")) {
+      const file = item.getAsFile();
+      compressImage(file, 800, 0.7, insertImageBlob);
+      e.preventDefault();
+    }
+  }
+});
+</script>
 </body>
 </html>
