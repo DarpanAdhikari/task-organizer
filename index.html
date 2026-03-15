@@ -774,17 +774,21 @@ function compressImage(file, maxWidth = 800, quality = 0.7, callback) {
 
 // --- Insert Image into Editor ---
 function insertImageBlob(blob) {
-  const imgURL = URL.createObjectURL(blob);
-  const img = document.createElement('img');
-  img.src = imgURL;
-  img.style.maxWidth = "100%";
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const img = document.createElement("img");
+    img.src = e.target.result; // Base64 image
+    img.style.maxWidth = "100%";
 
-  const sel = window.getSelection();
-  if (!sel.rangeCount) return;
-  const range = sel.getRangeAt(0);
-  range.insertNode(img);
-  range.setStartAfter(img);
-  range.collapse(true);
+    const sel = window.getSelection();
+    if (!sel.rangeCount) return;
+
+    const range = sel.getRangeAt(0);
+    range.insertNode(img);
+    range.setStartAfter(img);
+    range.collapse(true);
+  };
+  reader.readAsDataURL(blob);
 }
 
 // --- Handle Drag & Drop ---
