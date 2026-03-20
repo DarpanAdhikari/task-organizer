@@ -615,38 +615,43 @@
               <button class="small-btn del-btn" onclick="event.stopPropagation(); deleteWorkspace('${u.name}')">Delete Workspace</button>
             </div>
             <div class="board-list">
-              ${boardsToRender.map(b => `
-                <div class="board">
-                  <div class="board-header">
-                    <h3 ondblclick="renameBoard('${u.name}', '${b.title}')">${b.title}</h3>
-                    <button class="small-btn del-btn" onclick="deleteBoard('${u.name}','${b.title}')">Delete</button>
-                  </div>
-                  <div class="tasks" ondragover="handleDragOver(event)" ondrop="handleDrop(event, '${u.name}', '${b.title}')">
-                    
-                    ${b.tasks.map(t => `
-                      <div class="task" draggable="true" data-id="${t.id}"
-                           ondragstart="handleDragStart(event, '${u.name}', '${b.title}', ${t.id})" 
-                           ondragend="handleDragEnd(event)"
-                           onclick="openModal(event, '${u.name}', '${b.title}', ${t.id})">
-                        ${t.cover ? `<img src="${t.cover}" class="task-cover">` : ''}
-                        <div class="task-content">
-                          <span class="task-title">${t.title}</span>
-                          ${t.desc ? `<div class="task-desc-preview">${t.desc}</div>` : ''}
-                          <div class="card-btns">
-                            <button class="small-btn view-btn" onclick="openViewModal(event, '${u.name}', '${b.title}', ${t.id})">View</button>
-                            <button class="small-btn del-btn" onclick="event.stopPropagation(); deleteTask('${u.name}', '${b.title}', ${t.id})">Delete</button>
+              ${boardsToRender.map(b => 
+              {
+                let backColor =  getSoftColor();
+                let borderColor =  getSoftColor();
+                return `
+                  <div class="board" style="background: ${backColor};">
+                    <div class="board-header">
+                      <h3 ondblclick="renameBoard('${u.name}', '${b.title}')">${b.title}</h3>
+                      <button class="small-btn del-btn" onclick="deleteBoard('${u.name}','${b.title}')">Delete</button>
+                    </div>
+                    <div class="tasks" ondragover="handleDragOver(event)" ondrop="handleDrop(event, '${u.name}', '${b.title}')">
+                      
+                      ${b.tasks.map(t => `
+                        <div class="task" draggable="true" data-id="${t.id}" style="background: ${backColor}; border:2px dashed ${borderColor};"
+                            ondragstart="handleDragStart(event, '${u.name}', '${b.title}', ${t.id})" 
+                            ondragend="handleDragEnd(event)"
+                            onclick="openModal(event, '${u.name}', '${b.title}', ${t.id})">
+                          ${t.cover ? `<img src="${t.cover}" class="task-cover">` : ''}
+                          <div class="task-content">
+                            <span class="task-title">${t.title}</span>
+                            ${t.desc ? `<div class="task-desc-preview">${t.desc}</div>` : ''}
+                            <div class="card-btns">
+                              <button class="small-btn view-btn" onclick="openViewModal(event, '${u.name}', '${b.title}', ${t.id})">View</button>
+                              <button class="small-btn del-btn" onclick="event.stopPropagation(); deleteTask('${u.name}', '${b.title}', ${t.id})">Delete</button>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    `).join('')}
+                      `).join('')}
+                    </div>
+      
+                    <div class="input-group">
+                      <input type="text" id="nt-${u.name}-${b.title}" placeholder="Add a card..." onkeypress="if(event.key === 'Enter') addTask('${u.name}','${b.title}')">
+                      <button class="btn-primary" onclick="addTask('${u.name}', '${b.title}')">Add Card</button>
+                    </div>
                   </div>
-    
-                  <div class="input-group">
-                    <input type="text" id="nt-${u.name}-${b.title}" placeholder="Add a card..." onkeypress="if(event.key === 'Enter') addTask('${u.name}','${b.title}')">
-                    <button class="btn-primary" onclick="addTask('${u.name}', '${b.title}')">Add Card</button>
-                  </div>
-                </div>
-              `).join('')}
+                `
+                }).join('')}
               <div class="board" style="background: rgba(255,255,255,0.8); border: 2px dashed rgba(0,0,0,0.1); box-shadow: none;">
                 <div class="input-group" style="border-top: none;">
                   <input type="text" id="nb-${u.name}" placeholder="New list name..." onkeypress="if(event.key === 'Enter') addBoard('${u.name}')">
@@ -658,41 +663,50 @@
         });
       };
     }
-    function renameWorkspace(oldName) {
-  const newName = prompt("Enter new workspace name:", oldName);
-  if (!newName || newName.trim() === "" || newName === oldName) return;
 
-  const tx = db.transaction("users", "readwrite");
-  const store = tx.objectStore("users");
+    function getSoftColor() {
+      const r = Math.floor((Math.random() * 127) + 127); // 127–255
+      const g = Math.floor((Math.random() * 127) + 127);
+      const b = Math.floor((Math.random() * 127) + 127);
 
-  store.get(oldName).onsuccess = e => {
-    const data = e.target.result;
-    if (!data) return;
-
-    data.name = newName.trim();
-
-    store.delete(oldName); // remove old key
-    store.add(data);       // add new key
-
-    tx.oncomplete = () => {
-      render();
-      sendNotification("Workspace Renamed", `"${oldName}" → "${newName}"`);
-    };
-  };
-}
-  function renameBoard(uName, oldTitle) {
-  const newTitle = prompt("Enter new list name:", oldTitle);
-  if (!newTitle || newTitle.trim() === "" || newTitle === oldTitle) return;
-
-  updateUser(uName, u => {
-    const board = u.boards.find(b => b.title === oldTitle);
-    if (board) {
-      board.title = newTitle.trim();
+      return `rgb(${r}, ${g}, ${b})`;
     }
-  });
 
-  sendNotification("List Renamed", `"${oldTitle}" → "${newTitle}"`);
-}
+    function renameWorkspace(oldName) {
+      const newName = prompt("Enter new workspace name:", oldName);
+      if (!newName || newName.trim() === "" || newName === oldName) return;
+
+      const tx = db.transaction("users", "readwrite");
+      const store = tx.objectStore("users");
+
+      store.get(oldName).onsuccess = e => {
+        const data = e.target.result;
+        if (!data) return;
+
+        data.name = newName.trim();
+
+        store.delete(oldName); // remove old key
+        store.add(data);       // add new key
+
+        tx.oncomplete = () => {
+          render();
+          sendNotification("Workspace Renamed", `"${oldName}" → "${newName}"`);
+        };
+      };
+  }
+  function renameBoard(uName, oldTitle) {
+    const newTitle = prompt("Enter new list name:", oldTitle);
+    if (!newTitle || newTitle.trim() === "" || newTitle === oldTitle) return;
+
+    updateUser(uName, u => {
+      const board = u.boards.find(b => b.title === oldTitle);
+      if (board) {
+        board.title = newTitle.trim();
+      }
+    });
+
+    sendNotification("List Renamed", `"${oldTitle}" → "${newTitle}"`);
+  }
     // --- Enhanced Editor Functions ---
     function insertCode(){
       const sel = window.getSelection();
