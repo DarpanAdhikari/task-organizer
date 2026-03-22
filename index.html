@@ -83,13 +83,16 @@
 <footer style="position: fixed; bottom: 0; width: 100%; background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); text-align: center; padding: 12px 0; box-shadow: var(--shadow-sm); border-top: 1px solid rgba(255,255,255,0.2);">
     <span><i>&copy;</i><span id="date"></span><a href="https://darpanadhikari.com.np" target="_blank" style="color: white; font-weight: bold; text-decoration: none; margin: 0 5px;">DarpanAdhikari</a>|| All right reserved</span>
 </footer>
-<script src="assets/script_drp.min.js"></script>
+<script src="assets/new_script_drp.min.js"></script>
 <script>
   initVisibilityPopup({
     popId: "#workspaces",
     resize: true,
     width: 400,
-    height: 300
+    height: 300,
+    hideElements: [
+      "header" 
+    ]
   });
 </script>
 </body>
